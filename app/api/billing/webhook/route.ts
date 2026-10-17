@@ -1,4 +1,3 @@
-import { getDb } from "@/db";
 import { env } from "cloudflare:workers";
 import { validSignature } from "@/lib/crypto";
 import { reconcilePayment } from "@/lib/billing";
@@ -24,15 +23,23 @@ export async function POST(request: Request) {
     } catch {
       throw apiError(400, "Invalid payload.");
     }
+    if (!event || typeof event !== "object")
+      throw apiError(400, "Invalid event.");
     const entity =
       event.payload?.payment_link?.entity ||
       event.payload?.subscription?.entity;
-    if (!entity?.id) return Response.json({ received: true });
     // Always reconcile against the provider API; signed event replay cannot extend one-time access.
     const binding = env.DB!;
+    // Refund events refer to the captured payment, not the hosted link.
+    // This mapping is written only after verifying the provider's own link/capture.
+    const captured =
+      event.payload?.refund?.entity?.payment_id ||
+      event.payload?.payment?.entity?.id;
     const row = await binding
-      .prepare("SELECT * FROM payments WHERE provider_id=?")
-      .bind(entity.id)
+      .prepare(
+        "SELECT * FROM payments WHERE provider_id=? OR provider_payment_id=?",
+      )
+      .bind(entity?.id || "", typeof captured === "string" ? captured : "")
       .first<any>();
     if (row) await reconcilePayment({ binding }, row);
     return Response.json({ received: true });

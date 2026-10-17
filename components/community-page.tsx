@@ -206,7 +206,7 @@ export default function CommunityPage({ app }: { app: App }) {
   const tabs = [
     "Sessions",
     ...(role !== "mentor" ? ["Applications"] : []),
-    ...(role === "owner" ? ["Team", "Integrations"] : []),
+    ...(role === "owner" ? ["Team", "Integrations", "Pilot"] : []),
     ...(role === "student" || fac ? ["Payments"] : []),
   ];
   return (
@@ -303,7 +303,9 @@ export default function CommunityPage({ app }: { app: App }) {
                     }}
                   >
                     {["student", "teacher", "mentor", "employer"].map((r) => (
-                      <option key={r} value={r}>{ui(r)}</option>
+                      <option key={r} value={r}>
+                        {ui(r)}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -938,6 +940,9 @@ export default function CommunityPage({ app }: { app: App }) {
           </section>
         </div>
       )}
+      {tab === "Pilot" && role === "owner" && (
+        <PilotPanel key={state.workspace.id} app={app} />
+      )}
       {tab === "Payments" && <BillingPanel app={app} />}
       {tab === "Integrations" && role === "owner" && (
         <IntegrationPanel app={app} />
@@ -1110,6 +1115,178 @@ export function BillingPanel({ app, course }: { app: App; course?: Course }) {
           {ui("· access through")} {new Date(e.expiresAt).toLocaleDateString()}
         </p>
       ))}
+    </section>
+  );
+}
+function PilotPanel({ app }: { app: App }) {
+  const ui = useUiText();
+  const [report, setReport] = useState<any>(null);
+  const [failure, setFailure] = useState("");
+  const { busy, run } = useAction();
+  async function refresh() {
+    const next = await apiCall("/api/pilot");
+    setReport(next);
+    setFailure("");
+  }
+  useEffect(() => {
+    if (app.online) void refresh().catch((e) => setFailure(e.message));
+  }, [app.online]);
+  if (!app.online)
+    return (
+      <section className="panel community-panel">
+        <p>{ui("Connect to load pilot evidence.")}</p>
+      </section>
+    );
+  if (!report)
+    return (
+      <section className="panel community-panel">
+        <p role="status">{failure || ui("Loading pilot checks…")}</p>
+        <button className="button secondary" onClick={() => void run(refresh)}>
+          {ui("Retry")}
+        </button>
+      </section>
+    );
+  return (
+    <div className="community-stack">
+      <section className="panel community-panel">
+        <h2>{ui("Pilot readiness")}</h2>
+        <p>
+          {ui(
+            "Record real test outcomes before inviting a wider pilot. These are owner-reported results, not independent certification.",
+          )}
+        </p>
+        <p>
+          <strong>
+            {report.passed} / {report.total}
+          </strong>{" "}
+          {ui("checks recorded as passed")}
+        </p>
+        <div className="button-row">
+          <button
+            className="button secondary"
+            disabled={busy}
+            onClick={() => void run(refresh)}
+          >
+            {ui("Refresh")}
+          </button>
+          <button
+            className="button"
+            onClick={() => {
+              const url = URL.createObjectURL(
+                new Blob([JSON.stringify(report, null, 2)], {
+                  type: "application/json",
+                }),
+              );
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "disha-pilot-report.json";
+              link.click();
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }}
+          >
+            {ui("Download pilot report")}
+          </button>
+        </div>
+        <h3>{ui("Provider configuration")}</h3>
+        <p className="subtle">
+          {ui(
+            "Configured means keys are present. It does not confirm connectivity, successful payment or answer quality.",
+          )}
+        </p>
+        {report.configuration.map((c: any) => (
+          <div className="simple-row" key={c.id}>
+            <strong>{c.id.replaceAll("_", " ")}</strong>
+            <span>{ui(c.configured ? "Configured" : "Not configured")}</span>
+          </div>
+        ))}
+        <h3>{ui("Active invited accounts")}</h3>
+        {report.memberships.length ? (
+          report.memberships.map((m: any) => (
+            <p key={m.role}>
+              {ui(m.role)}: {m.count}
+            </p>
+          ))
+        ) : (
+          <p>{ui("No invited accounts have joined yet.")}</p>
+        )}
+      </section>
+      {report.checks.map((check: any) => (
+        <PilotCheck
+          key={`${check.id}:${check.updatedAt}`}
+          check={check}
+          busy={busy}
+          save={(status, evidence) =>
+            run(async () => {
+              await apiCall("/api/pilot", {
+                checkId: check.id,
+                status,
+                evidence,
+              });
+              await refresh();
+              toast.success(ui("Pilot result saved."));
+            })
+          }
+        />
+      ))}
+    </div>
+  );
+}
+function PilotCheck({
+  check,
+  busy,
+  save,
+}: {
+  check: any;
+  busy: boolean;
+  save: (status: string, evidence: string) => Promise<void>;
+}) {
+  const ui = useUiText();
+  const [status, setStatus] = useState(check.status);
+  const [evidence, setEvidence] = useState(check.evidence);
+  return (
+    <section className="panel community-panel">
+      <h3>{check.title}</h3>
+      <p>{check.detail}</p>
+      <form
+        className="profile-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save(status, evidence);
+        }}
+      >
+        <label>
+          {ui("Test result")}
+          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            {["not-run", "passed", "failed", "blocked"].map((s) => (
+              <option key={s} value={s}>
+                {ui(s)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {ui("Test evidence")}
+          <textarea
+            value={evidence}
+            onChange={(e) => setEvidence(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            minLength={status === "not-run" ? 0 : 10}
+            required={status !== "not-run"}
+            placeholder={ui(
+              "Record date, device or provider test reference and observed outcome. Do not include secrets or personal documents.",
+            )}
+          />
+        </label>
+        {check.updatedAt && (
+          <small>
+            {ui("Last recorded")}: {new Date(check.updatedAt).toLocaleString()}
+          </small>
+        )}
+        <button className="button secondary" disabled={busy}>
+          {ui("Save pilot result")}
+        </button>
+      </form>
     </section>
   );
 }

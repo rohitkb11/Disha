@@ -14,6 +14,7 @@
 | 10 | AI adapters, feeds and all lesson translations | Implemented; hosted provider activation pending |
 | 11 | Paid access, payment links, subscriptions and reconciliation | Implemented; merchant sandbox verification pending |
 | 12 | Expanded role/security checks, browser QA and updated release | See VERIFICATION.md |
+| 13 | Payment lifecycle hardening, refund reconciliation and owner pilot evidence board | Implemented; see verification and pilot runbook |
 
 Kolibri informs offline learner/coach workflows. Quest, iDreamCareer and Antarang inform exploration; Haqdarshak informs assisted applications; Forage informs original career trials. These are product references, not code-reuse or partnership claims. See THIRD_PARTY_NOTICES.md for actual dependencies.
 

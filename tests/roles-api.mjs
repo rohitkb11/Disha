@@ -391,11 +391,62 @@ await call(
   503,
 );
 const team = await call("owner", "/api/team");
+for (const role of ["student", "teacher", "mentor", "employer"])
+  await call(role, "/api/pilot", undefined, 403);
+const pilot = await call("owner", "/api/pilot");
+assert.equal(pilot.checks.length, 11);
+assert.equal(pilot.passed, 0);
+assert.equal(
+  pilot.configuration.find((c) => c.id === "payments").configured,
+  false,
+);
+await call(
+  "student",
+  "/api/pilot",
+  {
+    checkId: "android_offline",
+    status: "passed",
+    evidence: "A forged learner report",
+  },
+  403,
+);
+await call(
+  "owner",
+  "/api/pilot",
+  {
+    checkId: "unknown",
+    status: "passed",
+    evidence: "Unknown check should fail",
+  },
+  400,
+);
+await call(
+  "owner",
+  "/api/pilot",
+  { checkId: "android_offline", status: "passed", evidence: "" },
+  400,
+);
+await call("owner", "/api/pilot", {
+  checkId: "android_offline",
+  status: "blocked",
+  evidence: "Disposable QA fixture: no physical Android device is connected.",
+});
+const recorded = await call("owner", "/api/pilot");
+assert.equal(
+  recorded.checks.find((c) => c.id === "android_offline").status,
+  "blocked",
+);
+assert.equal(recorded.passed, 0);
+await call("owner", "/api/pilot", {
+  checkId: "android_offline",
+  status: "not-run",
+  evidence: "",
+});
 const member = team.members.find((m) => m.userId === users.student.id);
 await call("owner", "/api/team", { action: "revoke-member", id: member.id });
 await call("student", "/api/state", undefined, 403);
 console.log(
-  `${checks} HTTP assertions passed: separate accounts, roles, invitations, paid gates, mentoring, application consent/review, feed validation and revocation.`,
+  `${checks} HTTP assertions passed: separate accounts, roles, invitations, paid gates, mentoring, applications, feed validation, pilot evidence and revocation.`,
 );
 console.log(
   `Disposable QA centre ${ws}; all fixtures are local .test identities.`,

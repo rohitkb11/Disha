@@ -1,6 +1,13 @@
 # Verification record — 2026-10-17
 
-## Current release
+## Current release — sprint 13
+
+- Expanded suite: **29 automated tests passed**, including actual SQLite execution of all four immutable migrations and reconciliation writes against simulated provider responses. Covers payment-time expiry, stable replay, expired passes, full/partial refunds, stale paid replies, provider outages, invalid capture references and subscription paid-period/cancellation/renewal behavior. No merchant sandbox charge is claimed.
+- **65 compiled Worker HTTP assertions passed**, adding owner-only pilot access, forbidden teacher/learner/mentor/employer access, known check IDs, required evidence, persisted blocked results and reset behavior.
+- Production build and TypeScript checks passed. Migration 0003 applied locally.
+- Browser verified the new owner Pilot tab, configuration-presence labels, all eleven acceptance checks, saving a blocked Android result and retrieving that result again after leaving/reopening the tab. No physical Android pass was recorded. Pilot UI guidance is primarily English; shared controls and result labels have Hindi/Marathi translations.
+
+## Previous release regression evidence
 
 - TypeScript compilation: passed.
 - Unit/domain/security suite: 16 tests passed. Covers interest-dependent recommendations, unknown eligibility, progress normalization, translations/answer alignment, role permissions, record validation, HMAC forgery, payment amount/reference/currency checks and AI adapter failure behavior.
@@ -18,4 +25,4 @@ The original profile/sync API checks passed unauthenticated/spoofed identity rej
 
 ## Not claimed
 
-No live Razorpay charge, merchant sandbox purchase, recurring renewal, refund or dispute flow has been exercised with a real merchant account. Hosted AI/feed keys, provider webhook reachability through the private site gate, live consenting partner onboarding, microphone permissions/regional voices and low-end Android hardware remain activation/pilot requirements. See INTEGRATIONS.md. All bundled source dates are snapshots, not proof of live eligibility or vacancies. Some dynamic/catalogue/provider text remains in its original language.
+No live Razorpay charge, merchant sandbox purchase, recurring renewal, refund or dispute flow has been exercised with a real merchant account. Subscription refunds/disputes still need merchant-specific handling; one-time refund reconciliation is covered by contract/storage tests only. Hosted AI/feed keys, provider webhook reachability through the private site gate, live consenting partner onboarding, microphone permissions/regional voices and low-end Android hardware remain activation/pilot requirements. See INTEGRATIONS.md. All bundled source dates are snapshots, not proof of live eligibility or vacancies. Some dynamic/catalogue/provider text remains in its original language.

@@ -157,6 +157,7 @@ export const payments = sqliteTable(
     currency: text("currency").notNull().default("INR"),
     status: text("status").notNull(),
     providerId: text("provider_id").unique(),
+    providerPaymentId: text("provider_payment_id").unique(),
     checkoutUrl: text("checkout_url"),
     expiresAt: integer("expires_at").notNull(),
     createdAt: text("created_at").notNull(),
@@ -181,3 +182,19 @@ export const entitlements = sqliteTable("entitlements", {
   expiresAt: integer("expires_at").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const pilotChecks = sqliteTable(
+  "pilot_checks",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    checkId: text("check_id").notNull(),
+    status: text("status").notNull(),
+    evidence: text("evidence").notNull(),
+    actorId: text("actor_id").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [uniqueIndex("one_pilot_check").on(t.workspaceId, t.checkId)],
+);

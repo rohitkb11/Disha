@@ -778,6 +778,120 @@
           }
         }
       }
+    },
+    "/api/pilot": {
+      "get": {
+        "summary": "Owner-only provider configuration presence, active member counts and self-reported pilot evidence",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Record or reset an owner-reported pilot check with evidence; no check is marked passed automatically",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "checkId",
+                  "status",
+                  "evidence"
+                ],
+                "properties": {
+                  "checkId": {
+                    "type": "string",
+                    "description": "Known check identifier returned by GET"
+                  },
+                  "status": {
+                    "enum": [
+                      "not-run",
+                      "passed",
+                      "failed",
+                      "blocked"
+                    ]
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "description": "At least 10 characters for a recorded result; exclude secrets and personal documents"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      }
     }
   },
   "components": {

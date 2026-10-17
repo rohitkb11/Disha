@@ -46,8 +46,7 @@ export async function GET(request: Request) {
                 : "retrieval",
           payments: Boolean(
             runtimeConfig().RAZORPAY_KEY_ID &&
-            runtimeConfig().RAZORPAY_KEY_SECRET &&
-            runtimeConfig().RAZORPAY_WEBHOOK_SECRET,
+            runtimeConfig().RAZORPAY_KEY_SECRET,
           ),
           partnerFeed: Boolean(runtimeConfig().DISHA_PARTNER_FEED_URL),
         },

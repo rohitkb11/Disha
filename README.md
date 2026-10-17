@@ -15,6 +15,8 @@ A rural learning-to-livelihood PWA for the Citi challenge. Built with the suppli
 - Provider JSON import/refresh with provenance and freshness dates. Source reachability is distinct from verification of eligibility/vacancies. Nine official source/directory entries and two labelled demonstrations were bundled on 2026-10-17.
 - Razorpay hosted payment links, one-time module access, 30-day centre passes, optional monthly subscriptions, provider reconciliation, signed webhooks and server-enforced entitlements. Checkout is disabled without credentials.
 - Durable rate limits, audit records, bounded input and same-origin JSON writes. API reference: public/openapi.json.
+- Owner pilot board with eleven evidence-backed acceptance checks, configuration-presence indicators, joined-account counts and JSON report download. Test outcomes are explicitly self-reported.
+- One-time purchase refund reconciliation, capture verification and payment-time-based expiry. Refunded receipts cannot regain access through stale paid-event replay.
 
 ## Local setup
 
@@ -28,6 +30,7 @@ For a **new local database only**, apply migrations in order:
     node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_deep_zaran.sql
     node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_overconfident_spyke.sql
     node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_blue_punisher.sql
+    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_crazy_green_goblin.sql
     npm run dev
 
 Do not replay applied migrations. Hosted Sites deployments apply versioned migrations. Development sign-in is loopback-only and excluded from hosted builds.

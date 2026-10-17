@@ -28,9 +28,13 @@ Required sandbox checks before charging users:
 - Reject forged callbacks and unpaid/expired links. Replayed confirmation must not extend one-time expiry.
 - Verify subscription paid period, renewal, cancellation and unpaid cycles.
 - Exercise provider outage, duplicate clicks and interruption/reconciliation.
-- Define refunds, disputes, taxation/receipts and merchant support. Automated refund/dispute access revocation is not implemented.
+- Define refunds, disputes, taxation/receipts and merchant support. One-time links now fetch their actual captured payment: full refunds remove that receipt's access; partial refunds suspend it for merchant review. Refund callbacks use a previously verified payment-to-receipt mapping, then refetch the provider state. No money is refunded from Disha. Subscription refunds and chargeback/dispute automation still need a merchant-specific integration.
 
 No merchant account is configured in this delivery and no real payment was charged. Mocked contracts do not constitute provider end-to-end testing.
+
+Pass expiry starts at the provider payment timestamp, not the date the learner first presses Check payment. Replaying reconciliation returns the stored expiry. Subscription cancellation/completion retains only an already verified paid period and cannot create new access. During a provider outage the previous verified period is retained until its own expiry; the outage is reported as a failure, never a fresh payment confirmation.
+
+Use Community & accounts → Pilot to record actual sandbox and device outcomes. Configuration flags show key presence only, not network health. Download the JSON report for review; do not enter keys, payment details or personal documents in evidence notes. See PILOT_RUNBOOK.md.
 
 ## Opportunity feed
 

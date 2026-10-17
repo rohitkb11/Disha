@@ -2,6 +2,66 @@ import { STRINGS } from "./i18n";
 // Keys remain the readable English source. User-authored content and provider names
 // are deliberately preserved. These translations never change API enum values.
 const entries: [string, string, string][] = [
+  ["Pilot", "पायलट", "प्रायोगिक वापर"],
+  ["Pilot readiness", "पायलट की तैयारी", "प्रायोगिक वापराची तयारी"],
+  [
+    "Record real test outcomes before inviting a wider pilot. These are owner-reported results, not independent certification.",
+    "बड़े पायलट से पहले वास्तविक परीक्षण दर्ज करें। ये मालिक के बताए परिणाम हैं, स्वतंत्र प्रमाणन नहीं।",
+    "मोठ्या प्रायोगिक वापरापूर्वी प्रत्यक्ष चाचण्यांची नोंद करा. हे मालकाने नोंदवलेले निष्कर्ष आहेत; स्वतंत्र प्रमाणन नाही.",
+  ],
+  [
+    "checks recorded as passed",
+    "परीक्षण पास दर्ज हैं",
+    "चाचण्या उत्तीर्ण म्हणून नोंदवल्या",
+  ],
+  [
+    "Download pilot report",
+    "पायलट रिपोर्ट डाउनलोड करें",
+    "प्रायोगिक अहवाल डाउनलोड करा",
+  ],
+  ["Provider configuration", "प्रदाता की सेटिंग", "प्रदात्याची संरचना"],
+  [
+    "Configured means keys are present. It does not confirm connectivity, successful payment or answer quality.",
+    "कॉन्फ़िगर यानी कुंजियाँ मौजूद हैं। यह कनेक्शन, भुगतान या जवाब की गुणवत्ता की पुष्टि नहीं है।",
+    "कॉन्फिगर म्हणजे कळा उपलब्ध आहेत. ही जोडणी, भरणा किंवा उत्तराच्या गुणवत्तेची खात्री नाही.",
+  ],
+  ["Configured", "कॉन्फ़िगर है", "कॉन्फिगर केलेले"],
+  ["Not configured", "कॉन्फ़िगर नहीं है", "कॉन्फिगर केलेले नाही"],
+  ["Active invited accounts", "सक्रिय आमंत्रित खाते", "सक्रिय आमंत्रित खाती"],
+  [
+    "No invited accounts have joined yet.",
+    "अभी कोई आमंत्रित खाता नहीं जुड़ा है।",
+    "अद्याप आमंत्रित खाते सामील झालेले नाही.",
+  ],
+  [
+    "Connect to load pilot evidence.",
+    "पायलट प्रमाण देखने के लिए इंटरनेट जोड़ें।",
+    "चाचण्यांच्या नोंदी पाहण्यासाठी इंटरनेट जोडा.",
+  ],
+  [
+    "Loading pilot checks…",
+    "पायलट परीक्षण लोड हो रहे हैं…",
+    "चाचण्यांची यादी लोड होत आहे…",
+  ],
+  ["Test result", "परीक्षण परिणाम", "चाचणीचा निकाल"],
+  ["Test evidence", "परीक्षण का प्रमाण", "चाचणीची नोंद"],
+  ["not-run", "नहीं चलाया", "केलेली नाही"],
+  ["passed", "पास", "उत्तीर्ण"],
+  ["blocked", "रुका हुआ", "अडलेले"],
+  ["Last recorded", "अंतिम नोंद", "शेवटची नोंद"],
+  ["Save pilot result", "पायलट परिणाम सहेजें", "चाचणीचा निकाल जतन करा"],
+  ["Pilot result saved.", "पायलट परिणाम सहेजा गया।", "चाचणीचा निकाल जतन झाला."],
+  [
+    "Record date, device or provider test reference and observed outcome. Do not include secrets or personal documents.",
+    "तारीख, उपकरण या प्रदाता परीक्षण संदर्भ और परिणाम लिखें। गुप्त जानकारी या निजी दस्तावेज़ शामिल न करें।",
+    "तारीख, उपकरण किंवा प्रदात्याचा चाचणी संदर्भ व निकाल लिहा. गुप्त माहिती किंवा वैयक्तिक कागदपत्रे टाकू नका.",
+  ],
+  ["refunded", "वापस किया गया", "परत केलेले"],
+  [
+    "partially-refunded",
+    "आंशिक वापसी · समीक्षा चाहिए",
+    "अंशतः परत · तपासणी हवी",
+  ],
   ["Sessions", "सत्र", "सत्रे"],
   ["Team", "टीम", "संघ"],
   ["Integrations", "जुड़ी सेवाएँ", "जोडलेल्या सेवा"],
