@@ -2,15 +2,15 @@
 
 Working scope: a mobile PWA connecting rural students with career exploration, practical learning, verified information and facilitator support. English, Hindi and Marathi form the first language pack.
 
-| Sprint | Deliverable                                                                                        | Acceptance gate                                                       | Status                     |
-| ------ | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------- |
-| 1      | Full-stack foundation, durable data, signed-in workspaces, starter catalogues, licence inventory   | Database migrations and authenticated API work                        | Complete locally           |
-| 2      | Editable profiles, explainable career matching, conversational guide                               | Profile changes alter recommendations; guidance cites sources         | Complete locally           |
-| 3      | Learning pathways, lessons, quizzes and practical career trials                                    | Progress and scored work persist after reload                         | Complete locally           |
-| 4      | Opportunity discovery, eligibility, application checklists                                         | Missing information is distinguished from eligibility; drafts persist | Complete locally           |
-| 5      | Facilitator workspace, student management, notes, assignments, mentor requests and module creation | Teacher actions update the selected student and stored records        | Complete locally           |
-| 6      | Language packs, voice, installation and offline synchronization                                    | Offline actions survive reload and sync idempotently                  | Complete locally           |
-| 7      | Security and functional checks, browser QA, documentation and deployment                           | Type checks, domain tests, API and browser workflows pass             | Verification and packaging |
+| Sprint | Deliverable                                                                                        | Acceptance gate                                                       | Status           |
+| ------ | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------- |
+| 1      | Full-stack foundation, durable data, signed-in workspaces, starter catalogues, licence inventory   | Database migrations and authenticated API work                        | Complete locally |
+| 2      | Editable profiles, explainable career matching, conversational guide                               | Profile changes alter recommendations; guidance cites sources         | Complete locally |
+| 3      | Learning pathways, lessons, quizzes and practical career trials                                    | Progress and scored work persist after reload                         | Complete locally |
+| 4      | Opportunity discovery, eligibility, application checklists                                         | Missing information is distinguished from eligibility; drafts persist | Complete locally |
+| 5      | Facilitator workspace, student management, notes, assignments, mentor requests and module creation | Teacher actions update the selected student and stored records        | Complete locally |
+| 6      | Language packs, voice, installation and offline synchronization                                    | Offline actions survive reload and sync idempotently                  | Complete locally |
+| 7      | Security and functional checks, browser QA, documentation and deployment                           | Type checks, domain tests, API and browser workflows pass             | Complete         |
 
 ## References and reuse
 
@@ -37,3 +37,7 @@ Reuse the supplied Vinext/Cloudflare starter, its authentication and database bi
 - Production asset manifest added after the development offline test exposed incomplete module caching. The production offline reload/recovery check passed: cold reload, completing a lesson without the server, retained progress after another reload, and synchronization after reconnection.
 
 - Browser checks also verified Hindi and Marathi lesson translations and a complete six-question profile interview with an editable review. Actual microphone/device-voice and physical low-end Android testing remain device-dependent.
+
+## Delivery
+
+The private site was successfully deployed at https://disha-learning-pathways.buzzyrook128.chatgpt.site. All seven implementation sprints are complete within the documented hackathon scope. Hosted inference, payment collection, external submission and independent student/facilitator account linking remain explicitly documented integration boundaries.
