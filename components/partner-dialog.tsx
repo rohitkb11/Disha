@@ -1,4 +1,5 @@
 "use client";
+import { useUiText } from "./ui-language";
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Modal } from "./shared";
@@ -6,14 +7,20 @@ import type { Mentor, Opportunity } from "@/lib/types";
 export default function PartnerDialog({
   onClose,
   onSave,
+  opportunityOnly = false,
 }: {
+  opportunityOnly?: boolean;
   onClose: () => void;
   onSave: (
     kind: "mentor" | "opportunity",
     value: Mentor | Opportunity,
   ) => Promise<void>;
 }) {
-  const [kind, setKind] = useState<"mentor" | "opportunity">("mentor");
+  const ui = useUiText();
+
+  const [kind, setKind] = useState<"mentor" | "opportunity">(
+    opportunityOnly ? "opportunity" : "mentor",
+  );
   const [name, setName] = useState("");
   const [organization, setOrganization] = useState("");
   const [description, setDescription] = useState("");
@@ -24,7 +31,7 @@ export default function PartnerDialog({
   const [languages, setLanguages] = useState("English, Hindi");
   const [busy, setBusy] = useState(false);
   return (
-    <Modal title="Add your community network" onClose={onClose}>
+    <Modal title={ui("Add your community network")} onClose={onClose}>
       <form
         className="profile-form"
         onSubmit={async (e) => {
@@ -82,22 +89,24 @@ export default function PartnerDialog({
         }}
       >
         <label>
-          Record type
+          {ui("Record type")}
           <select
             value={kind}
             onChange={(e) =>
               setKind(e.target.value as "mentor" | "opportunity")
             }
           >
-            <option value="mentor">Community mentor</option>
+            {!opportunityOnly && (
+              <option value="mentor">{ui("Community mentor")}</option>
+            )}
             <option value="opportunity">
-              NGO / employer / training opportunity
+              {ui("NGO / employer / training opportunity")}
             </option>
           </select>
         </label>
         {kind === "mentor" && (
           <label>
-            Mentor name
+            {ui("Mentor name")}
             <input
               value={name}
               maxLength={100}
@@ -107,7 +116,7 @@ export default function PartnerDialog({
           </label>
         )}
         <label>
-          Organization / provider
+          {ui("Organization / provider")}
           <input
             required
             maxLength={150}
@@ -127,7 +136,7 @@ export default function PartnerDialog({
           />
         </label>
         <label>
-          Description
+          {ui("Description")}
           <textarea
             required
             maxLength={3000}
@@ -137,7 +146,7 @@ export default function PartnerDialog({
         </label>
         {kind === "mentor" ? (
           <label>
-            Languages (separate with commas)
+            {ui("Languages (separate with commas)")}
             <input
               required
               value={languages}
@@ -149,7 +158,7 @@ export default function PartnerDialog({
           <>
             <div className="form-grid">
               <label>
-                Type
+                {ui("Type")}
                 <select
                   value={type}
                   onChange={(e) =>
@@ -168,7 +177,7 @@ export default function PartnerDialog({
                 </select>
               </label>
               <label>
-                Location
+                {ui("Location")}
                 <input
                   required
                   value={location}
@@ -178,7 +187,7 @@ export default function PartnerDialog({
               </label>
             </div>
             <label>
-              Official provider page (https://)
+              {ui("Official provider page (https://)")}
               <input
                 type="url"
                 pattern="https://.*"
@@ -191,13 +200,13 @@ export default function PartnerDialog({
           </>
         )}
         <p className="notice neutral">
-          This saves a facilitator-provided record in your private workspace.
-          Confirm the person's consent and provider details before arranging
-          real participation. No invitation or message is sent.
+          {ui(
+            "This saves a facilitator-provided record in your private workspace. Confirm the person's consent and provider details before arranging real participation. No invitation or message is sent.",
+          )}
         </p>
         <div className="modal-actions">
           <button className="button" disabled={busy} type="submit">
-            Save community record
+            {ui("Save community record")}
             <ArrowRight size={16} />
           </button>
         </div>

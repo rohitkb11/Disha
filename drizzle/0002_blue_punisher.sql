@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `one_pending_checkout` ON `payments` (`workspace_id`,`user_id`,`product_id`) WHERE "payments"."status" IN ('created','creating');

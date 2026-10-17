@@ -1,4 +1,5 @@
 "use client";
+import { useUiText } from "./ui-language";
 import { useEffect, useMemo, useState } from "react";
 import { Toaster, toast } from "sonner";
 import {
@@ -45,6 +46,10 @@ import { useDisha } from "./use-disha";
 import { Modal, CourseIcon, Empty, ProgressBar, SourceLink } from "./shared";
 import PartnerDialog from "./partner-dialog";
 import ProfileInterview from "./profile-interview";
+import CommunityPage, { BillingPanel } from "./community-page";
+import { isFacilitator } from "@/lib/access";
+import { apiFetch } from "@/lib/client-api";
+import { COURSE_TITLES } from "@/lib/lesson-translations";
 import {
   CAREERS,
   COURSES,
@@ -81,6 +86,7 @@ type DialogState =
   | { type: "profile"; new?: boolean }
   | { type: "career"; career: Career }
   | { type: "lesson"; course: Course }
+  | { type: "checkout"; course: Course }
   | { type: "trial"; career: Career }
   | { type: "application"; opportunity: Opportunity }
   | { type: "mentor"; mentor: Mentor }
@@ -97,6 +103,8 @@ const NAV = [
 ] as const;
 
 export default function DishaApp() {
+  const ui = useUiText();
+
   const app = useDisha();
   const t = translator(app.lang);
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -116,7 +124,13 @@ export default function DishaApp() {
   const customCourses = (app.state?.records
     .filter((r) => r.kind === "course")
     .map((r) => r.data) || []) as Course[];
-  const courses = [...COURSES, ...customCourses];
+  const courses = [...COURSES, ...customCourses].map((c) => {
+    const translated =
+      app.lang !== "en" ? COURSE_TITLES[c.id]?.[app.lang] : undefined;
+    return translated
+      ? { ...c, title: translated[0], subtitle: translated[1] }
+      : c;
+  });
   const records = app.state?.records || [];
   const opportunities: Opportunity[] = [
     ...OPPORTUNITIES,
@@ -157,6 +171,9 @@ export default function DishaApp() {
   }, [app.page]);
   function navigate(page: string) {
     app.navigate(page);
+  }
+  function openCourse(course: Course) {
+    setDialog({ type: course.locked ? "checkout" : "lesson", course });
   }
   function saveStudent(updated: Student) {
     return app.save("student", updated.id, updated);
@@ -256,9 +273,10 @@ export default function DishaApp() {
       <img src="/icon.svg" alt="" width="38" height="38" />
       <div>
         <strong>
-          disha<span>.</span>
+          {ui("disha")}
+          <span>.</span>
         </strong>
-        <small>Find your way forward</small>
+        <small>{ui("Find your way forward")}</small>
       </div>
     </div>
   );
@@ -268,8 +286,37 @@ export default function DishaApp() {
       <div className="boot">
         {brand}
         <div className="loader" />
-        <p>Opening your learning space…</p>
+        <p>{ui("Opening your learning space…")}</p>
       </div>
+    );
+  if (app.state && !student)
+    return (
+      <>
+        <Toaster richColors />
+        <main className="main-content partner-portal">
+          <CommunityPage app={app} />
+          <button
+            className="button secondary"
+            onClick={async () => {
+              await clearOfflineData();
+              localStorage.removeItem("disha-workspace");
+              await app.initialize();
+            }}
+          >
+            {ui("Return to my own workspace")}
+          </button>
+          <button
+            className="text-button"
+            onClick={async () => {
+              await clearOfflineData();
+              localStorage.removeItem("disha-workspace");
+              window.location.assign("/signout-with-chatgpt?return_to=/");
+            }}
+          >
+            {ui("Sign out & clear this device")}
+          </button>
+        </main>
+      </>
     );
   if (!app.state || !student)
     return (
@@ -279,29 +326,41 @@ export default function DishaApp() {
           <header>
             {brand}
             <select
-              aria-label="Language"
+              aria-label={ui("Language")}
               value={app.lang}
               onChange={(e) => app.changeLang(e.target.value as Lang)}
             >
-              <option value="en">English</option>
+              <option value="en">{ui("English")}</option>
               <option value="hi">हिन्दी</option>
               <option value="mr">मराठी</option>
             </select>
           </header>
           <main className="welcome-content">
             <div className="eyebrow">
-              <Sprout size={17} /> LEARNING TO LIVELIHOOD
+              <Sprout size={17} />
+              {ui("LEARNING TO LIVELIHOOD")}
             </div>
             <h1>{t("welcome")}</h1>
             <p>{t("signInText")}</p>
             {app.error && app.error !== "AUTH_REQUIRED" ? (
               <div className="notice">
                 {app.error}
+                {app.error.startsWith("ACCESS_REVOKED") && (
+                  <button
+                    className="button secondary"
+                    onClick={() => {
+                      localStorage.removeItem("disha-workspace");
+                      void app.initialize();
+                    }}
+                  >
+                    {ui("Return to my own workspace")}
+                  </button>
+                )}
                 <button
                   className="button small"
                   onClick={() => void app.initialize()}
                 >
-                  Retry
+                  {ui("Retry")}
                 </button>
               </div>
             ) : (
@@ -317,20 +376,22 @@ export default function DishaApp() {
             <div className="welcome-features">
               <span>
                 <Compass />
-                Explore possibilities
+                {ui("Explore possibilities")}
               </span>
               <span>
                 <BookOpen />
-                Learn something useful
+                {ui("Learn something useful")}
               </span>
               <span>
                 <HeartHandshake />
-                Get a little guidance
+                {ui("Get a little guidance")}
               </span>
             </div>
             <div className="welcome-bottom">
-              <span>Built for small screens and big possibilities.</span>
-              <span>English · हिन्दी · मराठी</span>
+              <span>
+                {ui("Built for small screens and big possibilities.")}
+              </span>
+              <span>{ui("English · हिन्दी · मराठी")}</span>
             </div>
           </main>
         </div>
@@ -341,20 +402,20 @@ export default function DishaApp() {
     <>
       <Toaster richColors position="top-right" />
       <a href="#main-content" className="skip-link">
-        Skip to content
+        {ui("Skip to content")}
       </a>
       <div className="app-shell">
         {mobileNav && (
           <button
             className="nav-scrim"
-            aria-label="Close navigation"
+            aria-label={ui("Close navigation")}
             onClick={() => setMobileNav(false)}
           />
         )}
         <aside className={`sidebar ${mobileNav ? "is-open" : ""}`}>
           {brand}
-          <div className="sidebar-label">YOUR NEXT CHAPTER</div>
-          <nav aria-label="Main navigation">
+          <div className="sidebar-label">{ui("YOUR NEXT CHAPTER")}</div>
+          <nav aria-label={ui("Main navigation")}>
             {NAV.map((item) => (
               <button
                 key={item.id}
@@ -370,13 +431,22 @@ export default function DishaApp() {
             ))}
           </nav>
           <div className="sidebar-secondary">
-            <div className="sidebar-label">TOGETHER, WE GROW</div>
+            <div className="sidebar-label">{ui("TOGETHER, WE GROW")}</div>
+            {isFacilitator(app.state.access) && (
+              <button
+                className={`nav-item ${app.page === "facilitator" ? "active" : ""}`}
+                onClick={() => navigate("facilitator")}
+              >
+                <Users size={19} />
+                {t("facilitator")}
+              </button>
+            )}
             <button
-              className={`nav-item ${app.page === "facilitator" ? "active" : ""}`}
-              onClick={() => navigate("facilitator")}
+              className={`nav-item ${app.page === "community" ? "active" : ""}`}
+              onClick={() => navigate("community")}
             >
-              <Users size={19} />
-              {t("facilitator")}
+              <HeartHandshake size={19} />
+              {t("community")}
             </button>
             <button
               className={`nav-item ${app.page === "settings" ? "active" : ""}`}
@@ -390,8 +460,8 @@ export default function DishaApp() {
             <div className="help-spark">
               <Sparkles size={19} />
             </div>
-            <h4>A little help goes a long way.</h4>
-            <p>Your questions are a good place to start.</p>
+            <h4>{ui("A little help goes a long way.")}</h4>
+            <p>{ui("Your questions are a good place to start.")}</p>
             <button onClick={() => setGuideOpen(true)}>
               {t("guide")}
               <ArrowUpRight size={16} />
@@ -407,7 +477,7 @@ export default function DishaApp() {
             </div>
             <button
               className="icon-button"
-              aria-label="Edit profile"
+              aria-label={ui("Edit profile")}
               onClick={() => setDialog({ type: "profile" })}
             >
               <Settings size={16} />
@@ -419,7 +489,7 @@ export default function DishaApp() {
             <div className="topbar-left">
               <button
                 className="icon-button mobile-menu"
-                aria-label="Open navigation"
+                aria-label={ui("Open navigation")}
                 onClick={() => setMobileNav(true)}
               >
                 <Menu size={22} />
@@ -430,9 +500,11 @@ export default function DishaApp() {
                 <strong>
                   {NAV.find((n) => n.id === app.page)
                     ? t(NAV.find((n) => n.id === app.page)!.key)
-                    : app.page === "settings"
-                      ? t("settings")
-                      : t("facilitator")}
+                    : app.page === "community"
+                      ? t("community")
+                      : app.page === "settings"
+                        ? t("settings")
+                        : t("facilitator")}
                 </strong>
               </span>
             </div>
@@ -440,17 +512,17 @@ export default function DishaApp() {
               {status}
               <select
                 className="language-select"
-                aria-label="Choose language"
+                aria-label={ui("Choose language")}
                 value={app.lang}
                 onChange={(e) => app.changeLang(e.target.value as Lang)}
               >
-                <option value="en">EN · English</option>
-                <option value="hi">HI · हिन्दी</option>
-                <option value="mr">MR · मराठी</option>
+                <option value="en">{ui("EN · English")}</option>
+                <option value="hi">{ui("HI · हिन्दी")}</option>
+                <option value="mr">{ui("MR · मराठी")}</option>
               </select>
               <button
                 className="avatar"
-                aria-label="Edit learner profile"
+                aria-label={ui("Edit learner profile")}
                 onClick={() => setDialog({ type: "profile" })}
               >
                 {student.profile.name.slice(0, 1)}
@@ -463,7 +535,7 @@ export default function DishaApp() {
                 <span className="tiny-leaf">
                   <Leaf size={13} />
                 </span>{" "}
-                YOUR FUTURE, ONE STEP AT A TIME
+                {ui("YOUR FUTURE, ONE STEP AT A TIME")}
               </span>
               <button
                 className="sync-status"
@@ -500,19 +572,21 @@ export default function DishaApp() {
                 <section className="journey-hero">
                   <div className="hero-copy">
                     <div className="hero-eyebrow">
-                      <span /> A PATH THAT FEELS LIKE YOU
+                      <span />
+                      {ui("A PATH THAT FEELS LIKE YOU")}
                     </div>
                     <h2>
                       {chosen ? (
                         <>
-                          A little learning.
-                          <br />A new possibility.
+                          {ui("A little learning.")}
+                          <br />
+                          {ui("A new possibility.")}
                         </>
                       ) : (
                         <>
-                          Your next chapter
+                          {ui("Your next chapter")}
                           <br />
-                          starts with curiosity.
+                          {ui("starts with curiosity.")}
                         </>
                       )}
                     </h2>
@@ -539,13 +613,13 @@ export default function DishaApp() {
                       <span>
                         <Compass size={17} />
                       </span>
-                      Find your direction
+                      {ui("Find your direction")}
                     </div>
                     <div className="journey-tag tag-two">
                       <span>
                         <BookOpen size={17} />
                       </span>
-                      Grow a little, every day
+                      {ui("Grow a little, every day")}
                     </div>
                     <div className="journey-dots">
                       <i />
@@ -557,27 +631,27 @@ export default function DishaApp() {
                 <div className="stats-row">
                   <Stat
                     icon={Compass}
-                    label="Career directions"
+                    label={ui("Career directions")}
                     value={String(CAREERS.length)}
-                    detail="Possibilities to explore"
+                    detail={ui("Possibilities to explore")}
                   />
                   <Stat
                     icon={BookOpen}
-                    label="Learning steps"
+                    label={ui("Learning steps")}
                     value={String(completedLessons)}
-                    detail="Lessons you've completed"
+                    detail={ui("Lessons you've completed")}
                   />
                   <Stat
                     icon={Bookmark}
-                    label="Saved careers"
+                    label={ui("Saved careers")}
                     value={String(student.savedCareers.length)}
-                    detail="Your growing shortlist"
+                    detail={ui("Your growing shortlist")}
                   />
                   <Stat
                     icon={Target}
-                    label="Applications"
+                    label={ui("Applications")}
                     value={String(applications.length)}
-                    detail="Next steps in progress"
+                    detail={ui("Next steps in progress")}
                   />
                 </div>
                 <div className="dashboard-columns">
@@ -585,7 +659,7 @@ export default function DishaApp() {
                     <div className="section-heading">
                       <div>
                         <span className="eyebrow">
-                          SMALL STEPS, REAL PROGRESS
+                          {ui("SMALL STEPS, REAL PROGRESS")}
                         </span>
                         <h2>{t("continue")}</h2>
                       </div>
@@ -606,14 +680,16 @@ export default function DishaApp() {
                             progressFor(course).completed,
                             course.lessons.length,
                           )}
-                          onClick={() => setDialog({ type: "lesson", course })}
+                          onClick={() => openCourse(course)}
                           t={t}
                         />
                       ))}
                     </div>
                     <div className="section-heading space-top">
                       <div>
-                        <span className="eyebrow">FOLLOW YOUR CURIOSITY</span>
+                        <span className="eyebrow">
+                          {ui("FOLLOW YOUR CURIOSITY")}
+                        </span>
                         <h2>{t("recommended")}</h2>
                       </div>
                       <button
@@ -638,7 +714,7 @@ export default function DishaApp() {
                           <h3>{careerTitle(career, app.lang)}</h3>
                           <p>{reasons[0]}</p>
                           <span className="card-link">
-                            Take a closer look
+                            {ui("Take a closer look")}
                             <ArrowUpRight size={16} />
                           </span>
                         </button>
@@ -670,8 +746,8 @@ export default function DishaApp() {
                     />
                     <ActionStep
                       number="02"
-                      title="Try something, learn something"
-                      detail="A short activity can open a new direction."
+                      title={ui("Try something, learn something")}
+                      detail={ui("A short activity can open a new direction.")}
                       onClick={() =>
                         setDialog({
                           type: "trial",
@@ -681,15 +757,19 @@ export default function DishaApp() {
                     />
                     <ActionStep
                       number="03"
-                      title="Find support for your journey"
-                      detail="Explore scholarships, training and guidance."
+                      title={ui("Find support for your journey")}
+                      detail={ui(
+                        "Explore scholarships, training and guidance.",
+                      )}
                       onClick={() => navigate("opportunities")}
                     />
                     <div className="mentor-nudge">
                       <HeartHandshake size={27} />
-                      <h3>You don't have to do this alone.</h3>
+                      <h3>{ui("You don't have to do this alone.")}</h3>
                       <p>
-                        A good question is all it takes to start a conversation.
+                        {ui(
+                          "A good question is all it takes to start a conversation.",
+                        )}
                       </p>
                       <button
                         className="text-button"
@@ -706,15 +786,17 @@ export default function DishaApp() {
             {app.page === "discover" && (
               <>
                 <PageHeading
-                  eyebrow="A WORLD OF POSSIBILITIES"
+                  eyebrow={ui("A WORLD OF POSSIBILITIES")}
                   title={t("discover")}
-                  subtitle="Your interests are a starting point. Explore familiar paths and unexpected ones."
+                  subtitle={ui(
+                    "Your interests are a starting point. Explore familiar paths and unexpected ones.",
+                  )}
                 />
                 <div className="toolbar">
                   <SearchInput
                     value={query}
                     onChange={setQuery}
-                    placeholder="Search careers, interests or skills…"
+                    placeholder={ui("Search careers, interests or skills…")}
                   />
                   <div className="filter-tabs">
                     {[
@@ -739,8 +821,9 @@ export default function DishaApp() {
                   </div>
                 </div>
                 <p className="subtle">
-                  Recommendations reflect your selected interests. They are
-                  exploration suggestions, not validated aptitude scores.
+                  {ui(
+                    "Recommendations reflect your selected interests. They are exploration suggestions, not validated aptitude scores.",
+                  )}
                 </p>
                 <div className="card-grid">
                   {matches
@@ -801,7 +884,7 @@ export default function DishaApp() {
                               setDialog({ type: "career", career })
                             }
                           >
-                            Explore this path
+                            {ui("Explore this path")}
                             <ArrowUpRight size={16} />
                           </button>
                         </div>
@@ -818,9 +901,11 @@ export default function DishaApp() {
             {app.page === "learn" && (
               <>
                 <PageHeading
-                  eyebrow="MAKE A LITTLE PROGRESS"
+                  eyebrow={ui("MAKE A LITTLE PROGRESS")}
                   title={t("learn")}
-                  subtitle="Short lessons. Useful practice. A pace that works for you."
+                  subtitle={ui(
+                    "Short lessons. Useful practice. A pace that works for you.",
+                  )}
                   action={
                     <button
                       className="button secondary"
@@ -837,7 +922,7 @@ export default function DishaApp() {
                       <Compass size={25} />
                     </div>
                     <div>
-                      <small>YOUR CHOSEN DIRECTION</small>
+                      <small>{ui("YOUR CHOSEN DIRECTION")}</small>
                       <h3>{careerTitle(chosen, app.lang)}</h3>
                       <p>{chosen.route}</p>
                     </div>
@@ -847,7 +932,7 @@ export default function DishaApp() {
                         setDialog({ type: "career", career: chosen })
                       }
                     >
-                      View pathway
+                      {ui("View pathway")}
                       <ArrowUpRight size={16} />
                     </button>
                   </div>
@@ -856,7 +941,7 @@ export default function DishaApp() {
                   <SearchInput
                     value={query}
                     onChange={setQuery}
-                    placeholder="Search courses or skills…"
+                    placeholder={ui("Search courses or skills…")}
                   />
                   <div className="filter-tabs">
                     {["All", "My pathway", "Completed"].map((v) => (
@@ -897,9 +982,7 @@ export default function DishaApp() {
                         <article key={course.id} className="learning-card">
                           <button
                             className={`course-cover ${course.color}`}
-                            onClick={() =>
-                              setDialog({ type: "lesson", course })
-                            }
+                            onClick={() => openCourse(course)}
                             aria-label={`Open ${course.title}`}
                           >
                             <CourseIcon id={course.id} size={44} />
@@ -913,14 +996,17 @@ export default function DishaApp() {
                                 <Clock3 size={13} />
                                 {course.minutes} {t("minutes")}
                               </span>
-                              <span>{course.lessons.length} lessons</span>
+                              <span>
+                                {course.lessons.length}
+                                {ui("lessons")}
+                              </span>
                             </div>
                             <h3>{course.title}</h3>
                             <p>{course.subtitle}</p>
                             {course.custom && (
                               <span className="tag">
                                 {course.price
-                                  ? `₹${course.price} · Payment not connected`
+                                  ? `₹${course.price} · ${course.locked ? "Access required" : "Module access"}`
                                   : "Facilitator-created · Free"}
                               </span>
                             )}
@@ -938,9 +1024,7 @@ export default function DishaApp() {
                             <ProgressBar value={percent} />
                             <button
                               className="button course-button"
-                              onClick={() =>
-                                setDialog({ type: "lesson", course })
-                              }
+                              onClick={() => openCourse(course)}
                             >
                               {percent === 100
                                 ? "Review course"
@@ -959,23 +1043,25 @@ export default function DishaApp() {
             {app.page === "opportunities" && (
               <>
                 <PageHeading
-                  eyebrow="OPEN A NEW DOOR"
+                  eyebrow={ui("OPEN A NEW DOOR")}
                   title={t("opportunities")}
-                  subtitle="Find support, learning and experience for the direction you choose."
+                  subtitle={ui(
+                    "Find support, learning and experience for the direction you choose.",
+                  )}
                 />
                 <div className="notice neutral">
                   <ShieldCheck size={20} />
                   <span>
-                    Official program directories link to their providers.
-                    Demonstration listings are labelled. Always confirm current
-                    eligibility and dates with the provider.
+                    {ui(
+                      "Official program directories link to their providers. Demonstration listings are labelled. Always confirm current eligibility and dates with the provider.",
+                    )}
                   </span>
                 </div>
                 <div className="toolbar">
                   <SearchInput
                     value={query}
                     onChange={setQuery}
-                    placeholder="Search opportunities or providers…"
+                    placeholder={ui("Search opportunities or providers…")}
                   />
                   <div className="filter-tabs">
                     {[
@@ -1049,6 +1135,28 @@ export default function DishaApp() {
                                 {eligible.label}
                               </span>
                               <span>{o.benefit}</span>
+                              {o.deadline && (
+                                <span
+                                  className={
+                                    Date.parse(o.deadline + "T23:59:59Z") <
+                                    Date.now()
+                                      ? "text-red"
+                                      : ""
+                                  }
+                                >
+                                  {ui("Deadline:")}
+                                  {o.deadline}
+                                  {Date.parse(o.deadline + "T23:59:59Z") <
+                                  Date.now()
+                                    ? " · Closed"
+                                    : ""}
+                                </span>
+                              )}
+                              {o.provenance && (
+                                <span>
+                                  {o.provenance} · {o.verifiedAt}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <button
@@ -1071,17 +1179,18 @@ export default function DishaApp() {
             {app.page === "mentors" && (
               <>
                 <PageHeading
-                  eyebrow="A CONVERSATION CAN CHANGE THINGS"
+                  eyebrow={ui("A CONVERSATION CAN CHANGE THINGS")}
                   title={t("mentors")}
-                  subtitle="Prepare a question, share what you're working on, and ask for guidance."
+                  subtitle={ui(
+                    "Prepare a question, share what you're working on, and ask for guidance.",
+                  )}
                 />
                 <div className="notice neutral">
                   <HeartHandshake size={20} />
                   <span>
-                    Sample mentors are labelled; your facilitator can also add
-                    community mentors. Requests are saved for your facilitator;
-                    no external message is sent. Use National Career Service to
-                    explore real counselling options.
+                    {ui(
+                      "Sample mentors are labelled; your facilitator can also add community mentors. Requests are saved for your facilitator; no external message is sent. Use National Career Service to explore real counselling options.",
+                    )}
                   </span>
                 </div>
                 <div className="card-grid">
@@ -1109,20 +1218,21 @@ export default function DishaApp() {
                         className="button secondary"
                         onClick={() => setDialog({ type: "mentor", mentor })}
                       >
-                        Prepare a request
+                        {ui("Prepare a request")}
                         <ArrowUpRight size={16} />
                       </button>
                     </article>
                   ))}
                 </div>
                 <div className="panel space-top">
-                  <h3>Explore real career guidance</h3>
+                  <h3>{ui("Explore real career guidance")}</h3>
                   <p>
-                    Find counselling and career centres through the official
-                    National Career Service.
+                    {ui(
+                      "Find counselling and career centres through the official National Career Service.",
+                    )}
                   </p>
                   <SourceLink url="https://www.ncs.gov.in/">
-                    Visit National Career Service
+                    {ui("Visit National Career Service")}
                   </SourceLink>
                 </div>
               </>
@@ -1130,9 +1240,11 @@ export default function DishaApp() {
             {app.page === "passport" && (
               <>
                 <PageHeading
-                  eyebrow="LOOK HOW FAR YOU'VE COME"
+                  eyebrow={ui("LOOK HOW FAR YOU'VE COME")}
                   title={t("passport")}
-                  subtitle="Your interests, your work and the small steps that add up."
+                  subtitle={ui(
+                    "Your interests, your work and the small steps that add up.",
+                  )}
                   action={
                     <button
                       className="button secondary"
@@ -1147,11 +1259,14 @@ export default function DishaApp() {
                   <div className="passport-top">
                     <div className="avatar large">{profile!.name[0]}</div>
                     <div>
-                      <span className="eyebrow">DISHA LEARNING PASSPORT</span>
+                      <span className="eyebrow">
+                        {ui("DISHA LEARNING PASSPORT")}
+                      </span>
                       <h2>{profile!.name}</h2>
                       <p>
-                        {profile!.district} · Grade {profile!.grade}{" "}
-                        {student.sample && "· Sample learner"}
+                        {profile!.district}
+                        {ui("· Grade")}
+                        {profile!.grade} {student.sample && "· Sample learner"}
                       </p>
                     </div>
                     <img src="/icon.svg" width="46" height="46" alt="Disha" />
@@ -1168,7 +1283,7 @@ export default function DishaApp() {
                     <p>{profile!.goals}</p>
                   </div>
                   <div className="passport-section">
-                    <h3>My direction</h3>
+                    <h3>{ui("My direction")}</h3>
                     <p>
                       {chosen
                         ? careerTitle(chosen, app.lang)
@@ -1189,8 +1304,8 @@ export default function DishaApp() {
                                 ?.title || p.courseId}
                             </strong>
                             <small>
-                              {p.completed.length} lessons completed ·
-                              Self-paced practice
+                              {p.completed.length}
+                              {ui("lessons completed · Self-paced practice")}
                             </small>
                           </div>
                           <CheckCircle2 size={20} />
@@ -1198,8 +1313,9 @@ export default function DishaApp() {
                       ))
                     ) : (
                       <p className="subtle">
-                        Complete your first lesson to add learning evidence
-                        here.
+                        {ui(
+                          "Complete your first lesson to add learning evidence here.",
+                        )}
                       </p>
                     )}
                     {records
@@ -1218,7 +1334,7 @@ export default function DishaApp() {
                                 CAREERS.find((c) => c.id === r.data.careerId)
                                   ?.title
                               }{" "}
-                              · Career activity
+                              {ui("· Career activity")}
                             </strong>
                             <small>
                               {r.data.reflection ||
@@ -1245,13 +1361,15 @@ export default function DishaApp() {
                       ))
                     ) : (
                       <p className="subtle">
-                        Your application checklists will appear here.
+                        {ui("Your application checklists will appear here.")}
                       </p>
                     )}
                   </div>
                   <footer className="passport-disclaimer">
-                    <ShieldCheck size={17} />A personal learning record, not an
-                    accredited qualification or employment guarantee.
+                    <ShieldCheck size={17} />
+                    {ui(
+                      "A personal learning record, not an accredited qualification or employment guarantee.",
+                    )}
                   </footer>
                 </div>
                 <button
@@ -1263,12 +1381,14 @@ export default function DishaApp() {
                 </button>
               </>
             )}
-            {app.page === "facilitator" && (
+            {app.page === "facilitator" && isFacilitator(app.state.access) && (
               <>
                 <PageHeading
-                  eyebrow="HELP POTENTIAL FIND ITS WAY"
+                  eyebrow={ui("HELP POTENTIAL FIND ITS WAY")}
                   title={t("workspace")}
-                  subtitle="One place to support each learner's next step."
+                  subtitle={ui(
+                    "One place to support each learner's next step.",
+                  )}
                   action={
                     <button
                       className="button"
@@ -1282,31 +1402,31 @@ export default function DishaApp() {
                 <div className="stats-row">
                   <Stat
                     icon={Users}
-                    label="Learners"
+                    label={ui("Learners")}
                     value={String(students.length)}
-                    detail="In your private workspace"
+                    detail={ui("In your private workspace")}
                   />
                   <Stat
                     icon={Target}
-                    label="Need a profile review"
+                    label={ui("Need a profile review")}
                     value={String(
                       students.filter((s) => !s.profile.completed).length,
                     )}
-                    detail="An opportunity to help"
+                    detail={ui("An opportunity to help")}
                   />
                   <Stat
                     icon={FileText}
-                    label="Application checklists"
+                    label={ui("Application checklists")}
                     value={String(
                       records.filter((r) => r.kind === "application").length,
                     )}
-                    detail="Across your learners"
+                    detail={ui("Across your learners")}
                   />
                   <Stat
                     icon={BookOpen}
-                    label="Your modules"
+                    label={ui("Your modules")}
                     value={String(customCourses.length)}
-                    detail="Original local content"
+                    detail={ui("Original local content")}
                   />
                 </div>
                 <div className="filter-tabs centre-tabs">
@@ -1332,10 +1452,10 @@ export default function DishaApp() {
                       <table className="learner-table">
                         <thead>
                           <tr>
-                            <th>Learner</th>
-                            <th>Direction</th>
-                            <th>Next support</th>
-                            <th>Lessons</th>
+                            <th>{ui("Learner")}</th>
+                            <th>{ui("Direction")}</th>
+                            <th>{ui("Next support")}</th>
+                            <th>{ui("Lessons")}</th>
                             <th />
                           </tr>
                         </thead>
@@ -1355,8 +1475,8 @@ export default function DishaApp() {
                                   <div>
                                     <strong>{s.profile.name}</strong>
                                     <small>
-                                      {s.profile.district} · Grade{" "}
-                                      {s.profile.grade}
+                                      {s.profile.district}
+                                      {ui("· Grade")} {s.profile.grade}
                                     </small>
                                   </div>
                                 </div>
@@ -1394,7 +1514,7 @@ export default function DishaApp() {
                                     toast.info(`Supporting ${s.profile.name}`);
                                   }}
                                 >
-                                  Support
+                                  {ui("Support")}
                                   <ArrowRight size={15} />
                                 </button>
                               </td>
@@ -1406,7 +1526,8 @@ export default function DishaApp() {
                     <div className="two-columns space-top">
                       <div className="panel">
                         <span className="eyebrow">
-                          SUPPORTING {student.profile.name.toUpperCase()}
+                          {ui("SUPPORTING")}
+                          {student.profile.name.toUpperCase()}
                         </span>
                         <h3>{t("notes")}</h3>
                         <form
@@ -1423,13 +1544,13 @@ export default function DishaApp() {
                           }}
                         >
                           <label className="sr-only" htmlFor="teacher-note">
-                            Facilitator note
+                            {ui("Facilitator note")}
                           </label>
                           <textarea
                             id="teacher-note"
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="What is the learner's next step?"
+                            placeholder={ui("What is the learner's next step?")}
                             maxLength={3000}
                             required
                           />
@@ -1456,12 +1577,18 @@ export default function DishaApp() {
                           ))}
                       </div>
                       <div className="panel">
-                        <span className="eyebrow">AN ACHIEVABLE NEXT STEP</span>
-                        <h3>Assign learning</h3>
+                        <span className="eyebrow">
+                          {ui("AN ACHIEVABLE NEXT STEP")}
+                        </span>
+                        <h3>{ui("Assign learning")}</h3>
                         <p>
-                          Give {student.profile.name} a useful place to start.
+                          {ui("Give")}
+                          {student.profile.name}
+                          {ui("a useful place to start.")}
                         </p>
-                        <label htmlFor="assign-course">Learning module</label>
+                        <label htmlFor="assign-course">
+                          {ui("Learning module")}
+                        </label>
                         <select
                           id="assign-course"
                           value={assignCourse}
@@ -1488,7 +1615,7 @@ export default function DishaApp() {
                             toast.success("Learning assigned to this learner.");
                           }}
                         >
-                          Assign module
+                          {ui("Assign module")}
                           <ArrowRight size={15} />
                         </button>
                         <div className="space-top">
@@ -1534,8 +1661,10 @@ export default function DishaApp() {
                         ))
                     ) : (
                       <Empty
-                        title="No application checklists yet"
-                        detail="Help a learner prepare their first opportunity checklist."
+                        title={ui("No application checklists yet")}
+                        detail={ui(
+                          "Help a learner prepare their first opportunity checklist.",
+                        )}
                       />
                     )}
                   </div>
@@ -1563,12 +1692,13 @@ export default function DishaApp() {
                               </strong>
                               <p>{r.data.goal}</p>
                               <small>
-                                Demonstration request · saved locally, not sent
-                                externally
+                                {ui(
+                                  "Demonstration request · saved locally, not sent externally",
+                                )}
                               </small>
                             </div>
                             <select
-                              aria-label="Mentor request status"
+                              aria-label={ui("Mentor request status")}
                               value={r.data.status}
                               onChange={(e) =>
                                 void app.save("mentor-request", r.id, {
@@ -1577,16 +1707,18 @@ export default function DishaApp() {
                                 })
                               }
                             >
-                              <option>Awaiting facilitator</option>
-                              <option>Reviewed</option>
-                              <option>Practice session planned</option>
+                              <option>{ui("Awaiting facilitator")}</option>
+                              <option>{ui("Reviewed")}</option>
+                              <option>{ui("Practice session planned")}</option>
                             </select>
                           </div>
                         ))
                     ) : (
                       <Empty
-                        title="No mentor requests yet"
-                        detail="Learners can prepare a question from the mentor page."
+                        title={ui("No mentor requests yet")}
+                        detail={ui(
+                          "Learners can prepare a question from the mentor page.",
+                        )}
                       />
                     )}
                   </div>
@@ -1595,8 +1727,9 @@ export default function DishaApp() {
                   <>
                     <div className="section-heading">
                       <p>
-                        Build original modules for your community. Pricing is
-                        recorded; payment collection is not connected.
+                        {ui(
+                          "Free modules are available to linked learners. Paid lessons require a verified purchase or an active centre pass. Configure Razorpay before collecting payments.",
+                        )}
                       </p>
                       <button
                         className="button"
@@ -1612,53 +1745,56 @@ export default function DishaApp() {
                           key={c.id}
                           course={c}
                           percent={0}
-                          onClick={() =>
-                            setDialog({ type: "lesson", course: c })
-                          }
+                          onClick={() => openCourse(c)}
                           t={t}
                         />
                       ))
                     ) : (
                       <Empty
-                        title="Your first module starts here"
-                        detail="Add a short lesson, a practical question and a clear next step."
+                        title={ui("Your first module starts here")}
+                        detail={ui(
+                          "Add a short lesson, a practical question and a clear next step.",
+                        )}
                       />
                     )}
                   </>
                 )}
               </>
             )}
-            {app.page === "facilitator" && centreTab === "Partners" && (
-              <div className="panel">
-                <h3>Grow your local support network</h3>
-                <p>
-                  Add a community mentor or an opportunity from a training
-                  provider, NGO or employer. Partner-provided details are
-                  labelled and must be verified before a learner acts.
-                </p>
-                <button
-                  className="button"
-                  onClick={() => setDialog({ type: "partner" })}
-                >
-                  <Plus size={16} />
-                  Add a mentor or opportunity
-                </button>
-                <div className="space-top">
-                  {records
-                    .filter(
-                      (r) => r.kind === "mentor" || r.kind === "opportunity",
-                    )
-                    .map((r) => (
-                      <div className="simple-row" key={r.id}>
-                        <strong>{r.data.name || r.data.title}</strong>
-                        <span className="tag">
-                          {r.kind} · Facilitator-added
-                        </span>
-                      </div>
-                    ))}
+            {app.page === "facilitator" &&
+              isFacilitator(app.state.access) &&
+              centreTab === "Partners" && (
+                <div className="panel">
+                  <h3>{ui("Grow your local support network")}</h3>
+                  <p>
+                    {ui(
+                      "Add a community mentor or an opportunity from a training provider, NGO or employer. Partner-provided details are labelled and must be verified before a learner acts.",
+                    )}
+                  </p>
+                  <button
+                    className="button"
+                    onClick={() => setDialog({ type: "partner" })}
+                  >
+                    <Plus size={16} />
+                    {ui("Add a mentor or opportunity")}
+                  </button>
+                  <div className="space-top">
+                    {records
+                      .filter(
+                        (r) => r.kind === "mentor" || r.kind === "opportunity",
+                      )
+                      .map((r) => (
+                        <div className="simple-row" key={r.id}>
+                          <strong>{r.data.name || r.data.title}</strong>
+                          <span className="tag">
+                            {r.kind}
+                            {ui("· Facilitator-added")}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             {app.page === "settings" && (
               <SettingsPage
                 app={app}
@@ -1667,26 +1803,31 @@ export default function DishaApp() {
                 offlineStatus={offlineStatus}
               />
             )}
+            {app.page === "community" && <CommunityPage app={app} />}
             {student.sample && (
               <div className="sample-notice">
                 <span className="sample-dot" />
                 <strong>{t("sample")}</strong>
                 <span>{t("sampleNote")}</span>
-                <button
-                  onClick={() => setDialog({ type: "profile", new: true })}
-                >
-                  Create my profile
-                  <ArrowUpRight size={14} />
-                </button>
+                {isFacilitator(app.state.access) && (
+                  <button
+                    onClick={() => setDialog({ type: "profile", new: true })}
+                  >
+                    {ui("Create my profile")}
+                    <ArrowUpRight size={14} />
+                  </button>
+                )}
               </div>
             )}
             <footer className="app-footer">
               <span>
-                disha. <span className="separator">·</span> Every next step
-                matters.
+                {ui("disha.")}
+                <span className="separator">·</span>
+                {ui("Every next step matters.")}
               </span>
               <span>
-                Built with open-source foundations <Sprout size={13} />
+                {ui("Built with open-source foundations")}
+                <Sprout size={13} />
               </span>
             </footer>
           </main>
@@ -1734,7 +1875,7 @@ export default function DishaApp() {
             <span>{dialog.career.category}</span>
           </div>
           <p className="lead">{dialog.career.description}</p>
-          <h3>Why explore this?</h3>
+          <h3>{ui("Why explore this?")}</h3>
           <ul className="check-list">
             {matches
               .find((m) => m.career.id === dialog.career.id)
@@ -1745,16 +1886,17 @@ export default function DishaApp() {
                 </li>
               ))}
           </ul>
-          <h3>A route to explore</h3>
+          <h3>{ui("A route to explore")}</h3>
           <p>{dialog.career.route}</p>
           <div className="notice neutral">
             <Compass size={19} />
             <span>
-              Provider requirements vary. This is a starting route, not
-              admission or job eligibility advice.
+              {ui(
+                "Provider requirements vary. This is a starting route, not admission or job eligibility advice.",
+              )}
             </span>
           </div>
-          <h3>Your first learning steps</h3>
+          <h3>{ui("Your first learning steps")}</h3>
           {dialog.career.courseIds.map((id, i) => (
             <div className="pathway-step" key={id}>
               <span>{i + 1}</span>
@@ -1805,6 +1947,14 @@ export default function DishaApp() {
           onSave={saveProgress}
           onClose={() => setDialog(null)}
         />
+      )}
+      {dialog?.type === "checkout" && (
+        <Modal
+          title={ui("Learning module access")}
+          onClose={() => setDialog(null)}
+        >
+          <BillingPanel app={app} course={dialog.course} />
+        </Modal>
       )}
       {dialog?.type === "trial" && (
         <TrialDialog
@@ -1908,6 +2058,8 @@ function Stat({
   value: string;
   detail: string;
 }) {
+  const ui = useUiText();
+
   return (
     <div className="stat">
       <div className="stat-heading">
@@ -1933,6 +2085,8 @@ function PageHeading({
   subtitle: string;
   action?: React.ReactNode;
 }) {
+  const ui = useUiText();
+
   return (
     <section className="page-heading">
       <div>
@@ -1953,6 +2107,8 @@ function SearchInput({
   onChange: (v: string) => void;
   placeholder: string;
 }) {
+  const ui = useUiText();
+
   return (
     <label className="search-input">
       <Search size={17} />
@@ -1963,7 +2119,7 @@ function SearchInput({
         placeholder={placeholder}
       />
       {value && (
-        <button aria-label="Clear search" onClick={() => onChange("")}>
+        <button aria-label={ui("Clear search")} onClick={() => onChange("")}>
           <X size={14} />
         </button>
       )}
@@ -1981,6 +2137,8 @@ function CourseRow({
   onClick: () => void;
   t: ReturnType<typeof translator>;
 }) {
+  const ui = useUiText();
+
   return (
     <button className="course-row" onClick={onClick}>
       <span className={`course-art ${course.color}`}>
@@ -2017,6 +2175,8 @@ function ActionStep({
   detail: string;
   onClick: () => void;
 }) {
+  const ui = useUiText();
+
   return (
     <button className="action-step" onClick={onClick}>
       <span className="action-number">{number}</span>
@@ -2040,6 +2200,8 @@ function ProfileDialog({
   onClose: () => void;
   onSave: (p: Profile) => Promise<void>;
 }) {
+  const ui = useUiText();
+
   const [p, setP] = useState(profile);
   const [busy, setBusy] = useState(false);
   const [interview, setInterview] = useState(false);
@@ -2048,7 +2210,7 @@ function ProfileDialog({
     setP((old) => ({ ...old, [key]: value }));
   if (interview)
     return (
-      <Modal title="Discover your starting point" onClose={onClose} wide>
+      <Modal title={ui("Discover your starting point")} onClose={onClose} wide>
         <ProfileInterview
           profile={p}
           lang={lang}
@@ -2065,17 +2227,18 @@ function ProfileDialog({
       <div className="notice neutral">
         <Mic size={19} />
         <div>
-          <strong>Prefer a conversation?</strong>
+          <strong>{ui("Prefer a conversation?")}</strong>
           <p>
-            Answer a few guided questions by voice or text, then review your
-            profile.
+            {ui(
+              "Answer a few guided questions by voice or text, then review your profile.",
+            )}
           </p>
           <button
             className="button secondary small"
             type="button"
             onClick={() => setInterview(true)}
           >
-            Start guided discovery
+            {ui("Start guided discovery")}
             <ArrowRight size={15} />
           </button>
         </div>
@@ -2132,12 +2295,12 @@ function ProfileDialog({
                 );
               }}
             >
-              <option value="8">Grade 8</option>
-              <option value="9">Grade 9</option>
-              <option value="10">Grade 10</option>
-              <option value="11">Grade 11</option>
-              <option value="12">Grade 12</option>
-              <option value="Graduation">Graduation / college</option>
+              <option value="8">{ui("Grade 8")}</option>
+              <option value="9">{ui("Grade 9")}</option>
+              <option value="10">{ui("Grade 10")}</option>
+              <option value="11">{ui("Grade 11")}</option>
+              <option value="12">{ui("Grade 12")}</option>
+              <option value="Graduation">{ui("Graduation / college")}</option>
             </select>
           </label>
           <label>
@@ -2162,7 +2325,7 @@ function ProfileDialog({
               value={p.language}
               onChange={(e) => set("language", e.target.value)}
             >
-              <option value="en">English</option>
+              <option value="en">{ui("English")}</option>
               <option value="hi">हिन्दी</option>
               <option value="mr">मराठी</option>
             </select>
@@ -2254,9 +2417,9 @@ function ProfileDialog({
           {t("travel")}
         </label>
         <p className="subtle">
-          Your profile is stored in this private workspace and on this device
-          for offline access. Avoid using a shared device for sensitive
-          information.
+          {ui(
+            "Your profile is stored in this private workspace and on this device for offline access. Avoid using a shared device for sensitive information.",
+          )}
         </p>
         <div className="modal-actions">
           <button className="button secondary" type="button" onClick={onClose}>
@@ -2285,6 +2448,8 @@ function LessonDialog({
   onSave: (p: Progress) => Promise<void>;
   onClose: () => void;
 }) {
+  const ui = useUiText();
+
   const [index, setIndex] = useState(
     Math.max(
       0,
@@ -2348,7 +2513,7 @@ function LessonDialog({
           </span>
           <h2>{content.title}</h2>
           {lang !== "en" && !localized && (
-            <span className="tag">Lesson content in English</span>
+            <span className="tag">{ui("Lesson content in English")}</span>
           )}
           <p className="lesson-text">{content.text}</p>
           <button
@@ -2459,6 +2624,8 @@ function TrialDialog({
   onSave: (a: number, r: string) => Promise<void>;
   onClose: () => void;
 }) {
+  const ui = useUiText();
+
   const [answer, setAnswer] = useState<number | null>(null);
   const [reflection, setReflection] = useState("");
   const [show, setShow] = useState(false);
@@ -2471,11 +2638,12 @@ function TrialDialog({
     >
       <div className={`detail-art ${career.color}`}>
         <CourseIcon id={career.courseIds[0]} size={36} />
-        <span>5-minute exploration · English activity</span>
+        <span>{ui("5-minute exploration · English activity")}</span>
       </div>
       <p className="subtle">
-        This activity introduces a way of thinking about the work. It does not
-        measure your aptitude or certify practical competence.
+        {ui(
+          "This activity introduces a way of thinking about the work. It does not measure your aptitude or certify practical competence.",
+        )}
       </p>
       <h3>{career.trial.prompt}</h3>
       {career.trial.options.map((option, i) => (
@@ -2506,7 +2674,7 @@ function TrialDialog({
           value={reflection}
           maxLength={4000}
           onChange={(e) => setReflection(e.target.value)}
-          placeholder="I enjoyed… I would like to explore…"
+          placeholder={ui("I enjoyed… I would like to explore…")}
         />
       </label>
       <div className="modal-actions">
@@ -2515,7 +2683,7 @@ function TrialDialog({
           disabled={answer === null}
           onClick={() => setShow(true)}
         >
-          Explore the reasoning
+          {ui("Explore the reasoning")}
         </button>
         <button
           className="button"
@@ -2550,6 +2718,8 @@ function ApplicationDialog({
   onSave: (a: Application) => Promise<void>;
   onClose: () => void;
 }) {
+  const ui = useUiText();
+
   const [value, setValue] = useState(application);
   const [busy, setBusy] = useState(false);
   const eligibility = checkEligibility(o, profile);
@@ -2560,21 +2730,23 @@ function ApplicationDialog({
         <span className={`tag ${o.sample ? "warning" : "green"}`}>
           {o.sample
             ? "Demonstration listing"
-            : o.sourceLabel === "Community partner link"
-              ? "Community listing · verify details"
-              : "Official program directory"}
+            : o.intake === "disha"
+              ? ui("Apply to a connected partner")
+              : o.provenance || o.sourceLabel}
         </span>
       </div>
       <p className="lead">{o.description}</p>
       <div className="detail-facts">
         <span>
-          Provider<strong>{o.provider}</strong>
+          {ui("Provider")}
+          <strong>{o.provider}</strong>
         </span>
         <span>
-          Location<strong>{o.location}</strong>
+          {ui("Location")}
+          <strong>{o.location}</strong>
         </span>
         <span>
-          Application window
+          {ui("Application window")}
           <strong>{o.deadline || "Check current provider dates"}</strong>
         </span>
       </div>
@@ -2603,8 +2775,9 @@ function ApplicationDialog({
             <p>{check.description}</p>
             {check.result === "unknown" && (
               <small>
-                Add this information to your profile to evaluate the sample
-                rule.
+                {ui(
+                  "Add this information to your profile to evaluate the sample rule.",
+                )}
               </small>
             )}
           </div>
@@ -2612,14 +2785,16 @@ function ApplicationDialog({
       ))}
       {!o.sample && (
         <p className="subtle">
-          Requirements vary across listings. This directory has not been marked
-          eligible automatically. Read the official scheme or course details.
+          {ui(
+            "Requirements vary across listings. This directory has not been marked eligible automatically. Read the official scheme or course details.",
+          )}
         </p>
       )}
-      <h3>Application preparation checklist</h3>
+      <h3>{ui("Application preparation checklist")}</h3>
       <p className="subtle">
-        Track readiness here. Do not upload personal documents to this
-        demonstration.
+        {ui(
+          "Track readiness here. Do not upload personal documents to this demonstration.",
+        )}
       </p>
       {o.documents.map((document) => (
         <label className="document-check" key={document}>
@@ -2639,7 +2814,7 @@ function ApplicationDialog({
         </label>
       ))}
       <label className="space-top">
-        Your notes
+        {ui("Your notes")}
         <textarea
           maxLength={3000}
           value={value.notes}
@@ -2649,7 +2824,7 @@ function ApplicationDialog({
         />
       </label>
       <label>
-        Tracking status
+        {ui("Tracking status")}
         <select
           value={value.status}
           onChange={(e) =>
@@ -2659,15 +2834,16 @@ function ApplicationDialog({
             }))
           }
         >
-          <option>Preparing</option>
-          <option>Ready to apply</option>
-          <option>Submitted externally</option>
-          <option>Accepted</option>
+          <option>{ui("Preparing")}</option>
+          <option>{ui("Ready to apply")}</option>
+          <option>{ui("Submitted externally")}</option>
+          <option>{ui("Accepted")}</option>
         </select>
       </label>
       <p className="subtle">
-        Submitted and accepted statuses are self-reported. Saving does not
-        submit an application.{" "}
+        {ui(
+          "Submitted and accepted statuses are self-reported. Saving does not submit an application.",
+        )}{" "}
         {o.sample
           ? "This is a sample listing; no real grant or placement is available."
           : "Apply on the official provider's website."}
@@ -2675,7 +2851,9 @@ function ApplicationDialog({
       {o.source && <SourceLink url={o.source}>{o.sourceLabel}</SourceLink>}
       <div className="modal-actions">
         <span className="subtle">
-          Directory source checked {o.verifiedAt}; verify live requirements.
+          {ui("Directory source checked")}
+          {o.verifiedAt}
+          {ui("; verify live requirements.")}
         </span>
         <button
           className="button"
@@ -2691,7 +2869,7 @@ function ApplicationDialog({
           }}
         >
           <Check size={16} />
-          Save checklist
+          {ui("Save checklist")}
         </button>
       </div>
     </Modal>
@@ -2707,6 +2885,8 @@ function MentorDialog({
   onSave: (g: string) => Promise<void>;
   onClose: () => void;
 }) {
+  const ui = useUiText();
+
   const [goal, setGoal] = useState("");
   const [busy, setBusy] = useState(false);
   return (
@@ -2715,12 +2895,14 @@ function MentorDialog({
         {mentor.sample
           ? "Demonstration profile. "
           : "Facilitator-added community mentor. "}
-        This request is saved in your learning centre and is not sent to an
-        external person.
+        {ui(
+          "This question is saved for your facilitator. For an onboarded mentor, open Community & accounts → Sessions to propose a time and exchange messages.",
+        )}
       </div>
       <p>
-        A useful mentoring question names what you're working on and the help
-        you need.
+        {ui(
+          "A useful mentoring question names what you're working on and the help you need.",
+        )}
       </p>
       <form
         onSubmit={async (e) => {
@@ -2735,13 +2917,15 @@ function MentorDialog({
         }}
       >
         <label>
-          Your question
+          {ui("Your question")}
           <textarea
             required
             maxLength={1900}
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
-            placeholder="I'm exploring design. Could we review my first poster together?"
+            placeholder={ui(
+              "I'm exploring design. Could we review my first poster together?",
+            )}
           />
         </label>
         <div className="modal-actions">
@@ -2750,7 +2934,7 @@ function MentorDialog({
             disabled={busy || !goal.trim()}
             type="submit"
           >
-            Save practice request
+            {ui("Save practice request")}
             <ArrowRight size={16} />
           </button>
         </div>
@@ -2766,6 +2950,8 @@ function ModuleDialog({
   onClose: () => void;
   onSave: (c: Course) => Promise<void>;
 }) {
+  const ui = useUiText();
+
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [question, setQuestion] = useState("");
@@ -2775,10 +2961,11 @@ function ModuleDialog({
   const [explanation, setExplanation] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <Modal title="Create a local learning module" onClose={onClose} wide>
+    <Modal title={ui("Create a local learning module")} onClose={onClose} wide>
       <p className="subtle">
-        Add original content you have permission to use. Published modules are
-        available inside your private workspace.
+        {ui(
+          "Add original content you have permission to use. Published modules are available inside your private workspace.",
+        )}
       </p>
       <form
         className="profile-form"
@@ -2820,7 +3007,7 @@ function ModuleDialog({
         }}
       >
         <label>
-          Module title
+          {ui("Module title")}
           <input
             required
             maxLength={180}
@@ -2829,18 +3016,20 @@ function ModuleDialog({
           />
         </label>
         <label>
-          Learning content
+          {ui("Learning content")}
           <textarea
             required
             maxLength={12000}
             rows={7}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Explain one useful skill with an example and a practice step."
+            placeholder={ui(
+              "Explain one useful skill with an example and a practice step.",
+            )}
           />
         </label>
         <label>
-          Check-understanding question
+          {ui("Check-understanding question")}
           <input
             required
             maxLength={500}
@@ -2851,7 +3040,8 @@ function ModuleDialog({
         <div className="form-grid">
           {options.map((option, i) => (
             <label key={i}>
-              Answer option {i + 1}
+              {ui("Answer option")}
+              {i + 1}
               <input
                 required
                 maxLength={300}
@@ -2865,21 +3055,22 @@ function ModuleDialog({
             </label>
           ))}
           <label>
-            Correct answer
+            {ui("Correct answer")}
             <select
               value={correct}
               onChange={(e) => setCorrect(Number(e.target.value))}
             >
               {options.map((_, i) => (
                 <option key={i} value={i}>
-                  Option {i + 1}
+                  {ui("Option")}
+                  {i + 1}
                 </option>
               ))}
             </select>
           </label>
         </div>
         <label>
-          Explain the answer
+          {ui("Explain the answer")}
           <textarea
             maxLength={2000}
             value={explanation}
@@ -2887,7 +3078,7 @@ function ModuleDialog({
           />
         </label>
         <label>
-          Listed price (₹; 0 means free)
+          {ui("Listed price (₹; 0 means free)")}
           <input
             type="number"
             min={0}
@@ -2897,12 +3088,13 @@ function ModuleDialog({
           />
         </label>
         <p className="subtle">
-          Pricing is saved for your module. No payment gateway is connected;
-          learners can preview the content.
+          {ui(
+            "Free modules are available to linked learners. Paid lessons require a verified purchase or an active centre pass. Configure Razorpay before collecting payments.",
+          )}
         </p>
         <div className="modal-actions">
           <button className="button" disabled={busy} type="submit">
-            Publish to my workspace
+            {ui("Publish to my workspace")}
             <ArrowRight size={16} />
           </button>
         </div>
@@ -2946,6 +3138,8 @@ function GuidePanel({
   sync: () => Promise<void>;
   onClose: () => void;
 }) {
+  const ui = useUiText();
+
   const t = translator(lang);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -2986,7 +3180,7 @@ function GuidePanel({
         return;
       }
       await sync();
-      const response = await fetch("/api/guide", {
+      const response = await apiFetch("/api/guide", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -3076,8 +3270,8 @@ function GuidePanel({
           <Sparkles size={23} />
         </span>
         <div>
-          <h3>A little guidance for your next step.</h3>
-          <p>Ask about careers, learning or finding support.</p>
+          <h3>{ui("A little guidance for your next step.")}</h3>
+          <p>{ui("Ask about careers, learning or finding support.")}</p>
         </div>
       </div>
       <div className="guide-messages" aria-live="polite">
@@ -3123,7 +3317,9 @@ function GuidePanel({
         ))}
         {busy && (
           <div className="chat-message assistant">
-            <span className="thinking">Finding a useful next step…</span>
+            <span className="thinking">
+              {ui("Finding a useful next step…")}
+            </span>
           </div>
         )}
       </div>
@@ -3143,7 +3339,7 @@ function GuidePanel({
           <Mic size={19} />
         </button>
         <input
-          aria-label="Your question"
+          aria-label={ui("Your question")}
           value={message}
           maxLength={2000}
           onChange={(e) => setMessage(e.target.value)}
@@ -3164,8 +3360,9 @@ function GuidePanel({
           : aiAvailable
             ? "Uses the configured model when available, with an explicit catalogue fallback."
             : "Catalogue guidance is available. A model endpoint is not configured."}{" "}
-        Voice availability depends on your device and may need internet. Always
-        verify provider requirements.
+        {ui(
+          "Voice availability depends on your device and may need internet. Always verify provider requirements.",
+        )}
       </p>
     </Modal>
   );
@@ -3182,6 +3379,8 @@ function SettingsPage({
   t: ReturnType<typeof translator>;
   onPrepare: () => Promise<void>;
 }) {
+  const ui = useUiText();
+
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [confirmClear, setConfirmClear] = useState(false);
   useEffect(() => {
@@ -3198,20 +3397,22 @@ function SettingsPage({
   return (
     <>
       <PageHeading
-        eyebrow="A SPACE THAT WORKS FOR YOU"
+        eyebrow={ui("A SPACE THAT WORKS FOR YOU")}
         title={t("settings")}
-        subtitle="Choose your language, manage offline learning and control this device's data."
+        subtitle={ui(
+          "Choose your language, manage offline learning and control this device's data.",
+        )}
       />
       <div className="settings-grid">
         <section className="panel">
           <div className="panel-icon">
             <Download size={23} />
           </div>
-          <h3>Keep learning, even when the connection doesn't.</h3>
+          <h3>{ui("Keep learning, even when the connection doesn't.")}</h3>
           <p>
-            Profiles, the learning catalogue, activities and saved work are
-            stored on this device. New AI responses and fresh opportunity
-            information need a connection.
+            {ui(
+              "Profiles, the learning catalogue, activities and saved work are stored on this device. New AI responses and fresh opportunity information need a connection.",
+            )}
           </p>
           <button className="button" onClick={() => void onPrepare()}>
             <Download size={16} />
@@ -3221,8 +3422,11 @@ function SettingsPage({
             {offlineStatus}
           </p>
           <div className="simple-row space-top">
-            <span>Sync queue</span>
-            <span className="tag">{app.pending} pending</span>
+            <span>{ui("Sync queue")}</span>
+            <span className="tag">
+              {app.pending}
+              {ui("pending")}
+            </span>
           </div>
           <button
             className="text-button"
@@ -3239,37 +3443,41 @@ function SettingsPage({
           </div>
           <h3>{t("language")}</h3>
           <p>
-            Navigation supports English, Hindi and Marathi. Translated lessons
-            are labelled; some course content remains in English.
+            {ui(
+              "Navigation and all 16 bundled lessons support English, Hindi and Marathi. Community-authored content uses the language chosen by its author.",
+            )}
           </p>
-          <label htmlFor="settings-language">Interface language</label>
+          <label htmlFor="settings-language">{ui("Interface language")}</label>
           <select
             id="settings-language"
             value={app.lang}
             onChange={(e) => app.changeLang(e.target.value as Lang)}
           >
-            <option value="en">English</option>
+            <option value="en">{ui("English")}</option>
             <option value="hi">हिन्दी</option>
             <option value="mr">मराठी</option>
           </select>
           <p className="subtle space-top">
-            Voice input and output use browser/device speech features. No
-            guaranteed offline speech recognition is claimed.
+            {ui(
+              "Voice input and output use browser/device speech features. No guaranteed offline speech recognition is claimed.",
+            )}
           </p>
         </section>
         <section className="panel">
           <div className="panel-icon">
             <ShieldCheck size={23} />
           </div>
-          <h3>Your private workspace</h3>
+          <h3>{ui("Your private workspace")}</h3>
           <p>{app.state?.user.email}</p>
           <p>
-            Only the signed-in owner can access these server records. Switching
-            a learner changes who you are supporting within your own workspace.
+            {ui(
+              "Your role controls access to this centre. Linked learners see their own records; facilitators support centre learners. Manage invitations in Community & accounts.",
+            )}
           </p>
           <p className="subtle">
-            Local offline records can be accessed by someone using the same
-            unlocked browser. Clear this device before sharing it.
+            {ui(
+              "Local offline records can be accessed by someone using the same unlocked browser. Clear this device before sharing it.",
+            )}
           </p>
           <button
             className="button secondary"
@@ -3285,6 +3493,7 @@ function SettingsPage({
                 return;
               }
               await clearOfflineData();
+              localStorage.removeItem("disha-workspace");
               window.location.assign("/signout-with-chatgpt?return_to=/");
             }}
           >
@@ -3296,27 +3505,29 @@ function SettingsPage({
           <div className="panel-icon">
             <Sprout size={23} />
           </div>
-          <h3>Built on shared foundations</h3>
+          <h3>{ui("Built on shared foundations")}</h3>
           <p>
-            React, Vinext, Drizzle, Dexie, MiniSearch, json-logic-js and Lucide
-            provide the application foundations.
+            {ui(
+              "React, Vinext, Drizzle, Dexie, MiniSearch, json-logic-js and Lucide provide the application foundations.",
+            )}
           </p>
           <p>
-            Kolibri inspired offline learning and facilitator workflows. Career
-            and application flows draw on the research into Quest, iDreamCareer
-            and Haqdarshak.
+            {ui(
+              "Kolibri inspired offline learning and facilitator workflows. Career and application flows draw on the research into Quest, iDreamCareer and Haqdarshak.",
+            )}
           </p>
           <SourceLink url="https://github.com/learningequality/kolibri">
-            Explore Kolibri
+            {ui("Explore Kolibri")}
           </SourceLink>
         </section>
       </div>
       {conflicts.length > 0 && (
         <div className="panel space-top">
-          <h3>Retained conflict drafts</h3>
+          <h3>{ui("Retained conflict drafts")}</h3>
           <p>
-            A different device saved a newer record. Review your retained draft
-            before replacing the current version.
+            {ui(
+              "A different device saved a newer record. Review your retained draft before replacing the current version.",
+            )}
           </p>
           {conflicts.map((c) => (
             <div className="conflict-draft" key={c.key}>
@@ -3337,7 +3548,7 @@ function SettingsPage({
                   toast.success("Your reviewed draft was queued for saving.");
                 }}
               >
-                Use this draft
+                {ui("Use this draft")}
               </button>
             </div>
           ))}
@@ -3345,23 +3556,24 @@ function SettingsPage({
       )}
       {confirmClear && (
         <Modal
-          title="Clear data from this device?"
+          title={ui("Clear data from this device?")}
           onClose={() => setConfirmClear(false)}
         >
           <p>
-            Saved offline records and any unsynced changes will be removed from
-            this browser. Synced server records remain available after signing
-            in again.
+            {ui(
+              "Saved offline records and any unsynced changes will be removed from this browser. Synced server records remain available after signing in again.",
+            )}
           </p>
           <p className="notice">
-            {app.pending} changes currently waiting to sync.
+            {app.pending}
+            {ui("changes currently waiting to sync.")}
           </p>
           <div className="modal-actions">
             <button
               className="button secondary"
               onClick={() => setConfirmClear(false)}
             >
-              Keep my data
+              {ui("Keep my data")}
             </button>
             <button
               className="button danger"
@@ -3370,7 +3582,7 @@ function SettingsPage({
                 window.location.reload();
               }}
             >
-              Clear this device
+              {ui("Clear this device")}
             </button>
           </div>
         </Modal>

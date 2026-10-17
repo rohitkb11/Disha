@@ -1,4 +1,5 @@
 import type { Career, Course, Mentor, Opportunity, Student } from "./types";
+import { LESSON_TRANSLATIONS } from "./lesson-translations";
 
 export const INTERESTS = [
   "Helping people",
@@ -388,6 +389,16 @@ export const COURSES: Course[] = [
     ],
   },
 ];
+
+// Every bundled lesson has a translation matched to its own question and answer order.
+for (const course of COURSES) {
+  const translations = LESSON_TRANSLATIONS[course.id];
+  if (translations)
+    course.lessons.forEach((lesson, i) => {
+      lesson.hi = translations.hi[i];
+      lesson.mr = translations.mr[i];
+    });
+}
 
 function career(
   id: string,
@@ -932,6 +943,87 @@ export const OPPORTUNITIES: Opportunity[] = [
     interests: [],
   },
 ];
+
+// Source-checked snapshots, not an automated claim of current individual eligibility.
+OPPORTUNITIES.unshift(
+  {
+    id: "csss-renewal-2026",
+    title: "PM-USP CSSS scholarship renewal · 2026–27",
+    provider: "National Scholarship Portal / Ministry of Education",
+    type: "Scholarship",
+    description:
+      "The NSP student announcement lists a renewal window for this college and university scholarship. Existing awardees should check renewal requirements and the current notice; this listing does not establish eligibility for a fresh award.",
+    benefit: "Scholarship renewal subject to scheme rules",
+    location: "India · scheme-specific eligibility",
+    source: "https://scholarships.gov.in/Students",
+    sourceLabel: "Official NSP renewal announcement",
+    verifiedAt: "2026-10-17",
+    deadline: "2026-10-31",
+    criteria: [],
+    documents: [
+      "Confirm that this is the correct renewal scheme",
+      "Review current NSP requirements and OTR",
+      "Save the official submission acknowledgement",
+    ],
+    sample: false,
+    color: "lavender",
+    interests: ["Teaching", "Technology"],
+    provenance: "Source-checked announcement snapshot",
+    intake: "external",
+  },
+  {
+    id: "yasasvi-college-2026",
+    title: "PM YASASVI · Top Class Education in College",
+    provider:
+      "National Scholarship Portal / Ministry of Social Justice and Empowerment",
+    type: "Scholarship",
+    description:
+      "The official NSP listing includes a college scholarship for OBC, EBC and DNT students. Check the scheme specification for approved institutions, category, income and other requirements before applying.",
+    benefit: "Education support subject to published scheme terms",
+    location: "India · approved institutions",
+    source: "https://scholarships.gov.in/ciolt/All-Scholarships",
+    sourceLabel: "Official NSP scheme and application window",
+    verifiedAt: "2026-10-17",
+    deadline: "2026-10-31",
+    criteria: [],
+    documents: [
+      "Read the current scheme specification",
+      "Check institution and category requirements",
+      "Confirm required documents on NSP",
+    ],
+    sample: false,
+    color: "peach",
+    interests: [],
+    provenance: "Source-checked scheme snapshot",
+    intake: "external",
+  },
+  {
+    id: "naps2-programme",
+    title: "NAPS-2 apprenticeship route",
+    provider: "Ministry of Skill Development and Entrepreneurship",
+    type: "Apprenticeship",
+    description:
+      "NAPS-2 supports apprenticeships with participating establishments. Explore trade-specific openings through Apprenticeship India. Training takes place with the establishment; age, education, availability and stipend terms depend on the opening.",
+    benefit: "Workplace learning through participating establishments",
+    location: "India · establishment-specific",
+    source:
+      "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2294856&lang=1&reg=1",
+    sourceLabel: "Official government programme update · 5 August 2026",
+    verifiedAt: "2026-10-17",
+    deadline: null,
+    criteria: [],
+    documents: [
+      "Find an opening on Apprenticeship India",
+      "Check trade-specific entry requirements",
+      "Verify establishment and contract terms",
+    ],
+    sample: false,
+    color: "mint",
+    interests: ["Making things", "Technology"],
+    provenance: "Source-checked programme summary",
+    intake: "external",
+  },
+);
 
 export const MENTORS: Mentor[] = [
   {

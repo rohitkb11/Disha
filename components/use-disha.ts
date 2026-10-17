@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { loadState, offlineDb, saveRecord, syncRecords } from "@/lib/offline";
 import { sampleStudents } from "@/lib/catalog";
 import type { AppRecord, AppState, Lang } from "@/lib/types";
+import { canWriteRecord } from "@/lib/access";
 
 export function useDisha() {
   const [state, setState] = useState<AppState | null>(null);
@@ -58,6 +59,14 @@ export function useDisha() {
         data,
         updatedAt: new Date().toISOString(),
       };
+      if (
+        !canWriteRecord(
+          current.access,
+          record,
+          current.records.find((r) => r.id === id),
+        )
+      )
+        throw new Error("Your role cannot edit this record.");
       await saveRecord(current.workspace.id, record);
       setState((old) =>
         old
@@ -83,7 +92,7 @@ export function useDisha() {
     try {
       const data = await loadState();
       setOnline(navigator.onLine && !data.offline);
-      if (data.records.length === 0) {
+      if (data.records.length === 0 && data.access.role === "owner") {
         const samples = sampleStudents();
         for (const student of samples) {
           const record: AppRecord = {
@@ -124,7 +133,10 @@ export function useDisha() {
   useEffect(() => {
     setOnline(navigator.onLine);
     const stored = localStorage.getItem("disha-language");
-    if (["en", "hi", "mr"].includes(stored || "")) setLang(stored as Lang);
+    if (["en", "hi", "mr"].includes(stored || "")) {
+      setLang(stored as Lang);
+      document.documentElement.lang = stored!;
+    }
     const onHash = () => {
       const value = window.location.hash.slice(1);
       if (value === "main-content") return;
@@ -138,6 +150,7 @@ export function useDisha() {
           "passport",
           "facilitator",
           "settings",
+          "community",
         ].includes(value)
           ? value
           : "home",
@@ -171,6 +184,7 @@ export function useDisha() {
     setLang(value);
     localStorage.setItem("disha-language", value);
     document.documentElement.lang = value;
+    window.dispatchEvent(new Event("disha-language-change"));
   };
   return {
     state,

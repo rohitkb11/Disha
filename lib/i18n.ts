@@ -1,6 +1,7 @@
 import type { Lang } from "./types";
 export const STRINGS = {
   en: {
+    community: "Community & accounts",
     home: "My overview",
     discover: "Discover careers",
     learn: "My learning",
@@ -105,6 +106,7 @@ export const STRINGS = {
       "Interests are starting points. Your choices can change as you explore.",
   },
   hi: {
+    community: "समुदाय और खाते",
     home: "मेरा अवलोकन",
     discover: "करियर खोजें",
     learn: "मेरी पढ़ाई",
@@ -207,6 +209,7 @@ export const STRINGS = {
     profileHint: "रुचियाँ शुरुआत हैं। अनुभव के साथ आपकी पसंद बदल सकती है।",
   },
   mr: {
+    community: "समुदाय आणि खाती",
     home: "माझा आढावा",
     discover: "करिअर शोधा",
     learn: "माझे शिक्षण",

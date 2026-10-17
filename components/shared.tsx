@@ -1,4 +1,5 @@
 "use client";
+import { useUiText } from "./ui-language";
 import { useEffect, useRef, type ReactNode } from "react";
 import {
   X,
@@ -24,6 +25,8 @@ export function Modal({
   onClose: () => void;
   wide?: boolean;
 }) {
+  const ui = useUiText();
+
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const el = ref.current!;
@@ -46,7 +49,11 @@ export function Modal({
     >
       <div className="modal-head">
         <h2 id="modal-title">{title}</h2>
-        <button className="icon-button" aria-label="Close" onClick={onClose}>
+        <button
+          className="icon-button"
+          aria-label={ui("Close")}
+          onClick={onClose}
+        >
           <X size={21} />
         </button>
       </div>
@@ -65,10 +72,14 @@ export const ICONS: Record<string, typeof BookOpen> = {
   pathways: Compass,
 };
 export function CourseIcon({ id, size = 26 }: { id: string; size?: number }) {
+  const ui = useUiText();
+
   const Icon = ICONS[id] || BookOpen;
   return <Icon size={size} strokeWidth={1.65} />;
 }
 export function Empty({ title, detail }: { title: string; detail?: string }) {
+  const ui = useUiText();
+
   return (
     <div className="empty">
       <Compass size={34} />
@@ -84,6 +95,8 @@ export function SourceLink({
   url: string;
   children: ReactNode;
 }) {
+  const ui = useUiText();
+
   return (
     <a
       className="source-link"
@@ -97,6 +110,8 @@ export function SourceLink({
   );
 }
 export function ProgressBar({ value }: { value: number }) {
+  const ui = useUiText();
+
   return (
     <div
       className="progress-track"

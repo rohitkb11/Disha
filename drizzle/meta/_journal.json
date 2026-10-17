@@ -8,6 +8,20 @@
       "when": 1792236039194,
       "tag": "0000_deep_zaran",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792252031776,
+      "tag": "0001_overconfident_spyke",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792252736722,
+      "tag": "0002_blue_punisher",
+      "breakpoints": true
     }
   ]
 }

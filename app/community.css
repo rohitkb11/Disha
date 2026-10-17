@@ -1,0 +1,30 @@
+.community-page { max-width: 1120px; margin: 0 auto; }
+.community-panel { padding: 24px; min-width: 0; }
+.community-panel h2 { display:flex; align-items:center; gap:10px; margin-bottom:14px; font-size:21px; }
+.community-panel > p { margin:12px 0; line-height:1.7; }
+.community-panel label { display:grid; gap:8px; font-size:13px; font-weight:600; margin:12px 0; }
+.community-panel input,.community-panel select,.community-panel textarea { width:100%; min-width:0; padding:11px 12px; border:1px solid #d8dfd7; border-radius:9px; background:#fff; color:#213c32; font:inherit; }
+.community-panel input[type=checkbox] { width:18px; }
+.community-panel .check-label { display:flex; align-items:flex-start; }
+.community-stack { display:grid; gap:20px; }
+.community-page .tab-row { display:flex; flex-wrap:wrap; gap:8px; margin:24px 0; }
+.community-page .tab-row button { border:1px solid #d7dfd4; border-radius:30px; padding:10px 18px; background:#fff; }
+.community-page .tab-row button.active { background:#214a3a; color:white; }
+.inline-form { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+.inline-form label { flex:1; min-width:180px; }
+.inline-form button { margin-bottom:12px; }
+.invite-result { display:flex; flex-direction:column; align-items:flex-start; margin-top:18px; gap:12px; }
+.invite-result code { max-width:100%; overflow-wrap:anywhere; font-size:13px; user-select:all; }
+.session-card { padding:20px; border:1px solid #e0e5dc; border-radius:12px; margin:14px 0; }
+.session-card.selected { border-color:#54846a; }
+.session-card h3 { margin:12px 0; }
+.session-card p { margin:8px 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.button-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+.session-messages { max-height:420px; overflow:auto; }
+.session-messages > div { padding:14px; background:#f1f5ee; margin:10px 0; border-radius:10px; }
+.session-messages p { white-space:pre-wrap; margin:8px 0; overflow-wrap:anywhere; }
+.session-messages small { color:#687b6e; }
+.payment-row { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; border-top:1px solid #e0e5dc; padding:16px 0; }
+.payment-row small { display:block; margin-top:6px; }
+.partner-portal { max-width:1200px; padding:32px 20px; margin:0 auto; }
+@media(max-width:640px) { .community-panel{padding:18px;} .community-panel .simple-row{align-items:flex-start;gap:12px;flex-wrap:wrap;} .community-panel .simple-row small {overflow-wrap:anywhere;} .community-panel .form-grid {grid-template-columns:1fr;} }

@@ -46,6 +46,7 @@ export type Lesson = {
   };
 };
 export type Course = {
+  locked?: boolean;
   id: string;
   title: string;
   subtitle: string;
@@ -92,6 +93,10 @@ export type Criterion = {
   description: string;
 };
 export type Opportunity = {
+  partnerUserId?: string;
+  intake?: "disha" | "external";
+  refreshedAt?: string;
+  provenance?: string;
   id: string;
   title: string;
   provider: string;
@@ -126,6 +131,8 @@ export type Application = {
   updatedAt: string;
 };
 export type Mentor = {
+  availability?: string;
+  onboarded?: boolean;
   id: string;
   name: string;
   title: string;
@@ -162,6 +169,9 @@ export type SyncEvent = {
   queuedAt: string;
 };
 export type AppState = {
+  access: import("./access").Access;
+  workspaces: { id: string; name: string; role: import("./access").Role }[];
+  integrations: { ai: string; payments: boolean; partnerFeed: boolean };
   workspace: { id: string; name: string };
   user: { userId: string; name: string; email: string };
   records: AppRecord[];

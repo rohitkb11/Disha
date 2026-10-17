@@ -1,80 +1,56 @@
 # Disha
 
-A rural learning-to-livelihood PWA built for the Citi challenge. Students explore careers, try practical activities, learn through short modules, prepare applications and maintain a learning passport. Facilitators support multiple learners, keep notes, assign learning, author modules and add community partners.
+A rural learning-to-livelihood PWA for the Citi challenge. Built with the supplied Vinext/Cloudflare starter and established open-source libraries. Kolibri is the main product reference; Disha is not a Kolibri fork. See THIRD_PARTY_NOTICES.md for actual reuse.
 
-## Features
+## Implemented
 
-- Twelve career directions, including creative, care, agricultural, technical and community roles.
-- Explainable matching based on explicitly selected interests, with education bridges rather than exclusion of aspirational paths.
-- Guided profile discovery through voice or text, followed by user review.
-- Eight original starter courses, sixteen lessons, quizzes and a career activity for each direction.
-- Six official program-directory links and two explicitly labelled demonstration opportunities.
-- Application checklists, document-readiness tracking and self-reported statuses.
-- Three labelled sample mentors, facilitator-added mentors and internal mentoring requests.
-- Learner management, notes, assignments and original training-module publishing with listed pricing.
-- English, Hindi and Marathi navigation; selected lessons translated into Hindi/Marathi.
-- Browser voice input/output with typed alternatives and clear support limitations.
-- Source-linked guide with a real server-side Ollama integration and an explicit retrieval fallback.
-- Durable private workspaces in Cloudflare D1; IndexedDB outbox, conflict handling, offline shell preparation and install manifest.
-- Learning passport export as JSON and browser printing.
-
-## Requirements
-
-Node.js 22.13 or newer; Node 24 is supported. npm and Git are required. A Cloudflare account is not required for local D1 emulation. Ollama is optional for generative guidance.
+- Twelve explainable career pathways, eight original courses, sixteen lessons/assessments, career trials and a learning passport with JSON export/printing.
+- English, Hindi and Marathi navigation, common screens/forms and all sixteen bundled lessons. Provider text, user-authored content, career descriptions and some dynamic errors/statuses retain their source language. Browser speech includes typed alternatives.
+- D1 persistence, IndexedDB outbox, revision conflicts, replay protection and prepared offline shell.
+- Independent owner, teacher, student, mentor and employer accounts. Email-bound invitations expire after 48 hours, are single-use and revocable. Server authorization scopes linked learners to their records; facilitator notes remain private.
+- Centre selection, learner management, assignments, notes, module authoring and employer opportunity publishing.
+- Consented applications to onboarded employers inside the centre, durable receipts, review decisions and withdrawal. External provider applications still happen on their websites; their checklists are self-reported.
+- Onboarded mentor availability, session proposals, overlap protection, confirmation/cancellation/completion and participant conversations.
+- Source-linked guidance using optional Cloudflare Workers AI or Ollama adapters and a clearly labelled retrieval fallback.
+- Provider JSON import/refresh with provenance and freshness dates. Source reachability is distinct from verification of eligibility/vacancies. Nine official source/directory entries and two labelled demonstrations were bundled on 2026-10-17.
+- Razorpay hosted payment links, one-time module access, 30-day centre passes, optional monthly subscriptions, provider reconciliation, signed webhooks and server-enforced entitlements. Checkout is disabled without credentials.
+- Durable rate limits, audit records, bounded input and same-origin JSON writes. API reference: public/openapi.json.
 
 ## Local setup
 
-Run these commands from the project directory:
+Requires Node 22.13+ (Node 24 supported), npm and Git. No Cloudflare account is needed for local D1 emulation.
 
     npm ci
     npm run build
-    node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_deep_zaran.sql
+
+For a **new local database only**, apply migrations in order:
+
+    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_deep_zaran.sql
+    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_overconfident_spyke.sql
+    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_blue_punisher.sql
     npm run dev
 
-Apply the SQL migration once to a new local database. Do not replay an applied migration. The database remains under `.wrangler/state`. Dev normally serves at http://127.0.0.1:5173; use the URL printed by the server.
+Do not replay applied migrations. Hosted Sites deployments apply versioned migrations. Development sign-in is loopback-only and excluded from hosted builds.
 
-The portable starter simulates sign-in on loopback. Choose “Open my learning space” to start. This development identity is never included in hosted builds. A new workspace starts with clearly labelled sample learners; use “Create my profile” for an original learner.
-
-If a bundled Windows npm shim fails, invoke the installed npm JavaScript entrypoint using its actual absolute path, for example:
+If the Windows npm shim fails, invoke the real entrypoint:
 
     & 'C:\Program Files\nodejs\node.exe' 'C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js' run dev
 
-## Local AI
-
-Copy `.env.example` to the ignored `.dev.vars` file. Run Ollama and make the configured model available:
-
-    ollama serve
-    ollama pull qwen2.5:1.5b
-
-Restart dev after changing runtime variables. The browser never receives the inference URL. The guide displays the actual response mode and links to retrieved sources. If inference fails, the catalogue fallback remains usable.
-
-For hosting, configure a securely reachable inference service through runtime environment settings. The user's localhost is not reachable from a hosted Worker. Without that configuration, the hosted site uses catalogue guidance.
-
-## Useful commands
+## Verification
 
     npm run typecheck
     npm test
-    npm run test:api
     npm run build
-    npm start
 
-`test:api` expects the local development server at port 5173 and uses its local test identity. It creates a clearly named disposable QA learner. Set `DISHA_TEST_AI=1` to include inference. It is not a test command for the private production site.
+Separate-account checks target the **local compiled Worker**:
 
-## Offline demonstration
+    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --port 5174 --inspector-port 0
+    npm run test:roles
 
-1. Sign in online, open a course, then use Settings → Prepare for offline.
-2. Disconnect connectivity and reload the page.
-3. Read a saved lesson and complete a quiz or activity. The edit remains queued on the device.
-4. Reconnect and use Sync now. Reload and verify that progress remains.
+This creates disposable `.test` identities locally. Never target hosted Sites with simulated identity headers. `npm run test:api` checks original profile/sync workflows against the development server on port 5173. See VERIFICATION.md for release evidence.
 
-New AI generation, external application sites and live provider information need connectivity. Missing regional device voices or unsupported speech recognition produce a typed fallback, not a silent failure.
+## Pilot activation
 
-## Scope and deployment boundaries
+The existing [Disha site](https://disha-learning-pathways.buzzyrook128.chatgpt.site/) retains its owner-only audience. Centre membership does not bypass the Sites sign-in gate. The owner must grant intended pilot users site access separately, then use Community & accounts → Team for centre invitations. Learners/mentors link to existing profiles; teachers/employers do not need profile links.
 
-This is a substantial functional hackathon implementation, not a claim of a field-validated production service. The initial host is private to its owner. Facilitator and student screens share that owner's workspace; separate independently signed-in learner accounts, delegated roles, public enrollment and institutional membership are future extensions.
-
-No real applications are submitted, mentor messages sent or payments charged. The interface identifies demonstration records, self-reported statuses and provider verification requirements. Course prices are recorded, but a payment gateway and commercial access controls are not connected.
-
-Official directories are not a live aggregated vacancy or scholarship feed. Refresh catalogue records and verify provider requirements before a real pilot. Browser/device voice coverage and performance on actual low-end Android phones still require field testing.
-
-See SPRINTS.md for phase acceptance gates, ARCHITECTURE.md for the data flow, and THIRD_PARTY_NOTICES.md for actual reuse and inspiration. Original application code uses the MIT licence; dependency licences remain applicable.
+INTEGRATIONS.md documents AI, payments and feeds. Real credentials, consenting mentors/employers and physical device tests remain external dependencies. No live transaction has been tested or charged. This is a functional hackathon implementation; production commerce operations and field validation remain pilot work.

@@ -1,5 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { AppRecord, AppState, SyncEvent } from "./types";
+import { apiFetch, activeWorkspace } from "./client-api";
+import { canReadRecord, canWriteRecord } from "./access";
 
 class OfflineDatabase extends Dexie {
   meta!: Table<{ key: string; value: any }, string>;
@@ -20,10 +22,15 @@ let activeSync: Promise<{ pending: number; conflicts: string[] }> | null = null;
 export async function loadState(): Promise<AppState> {
   let response: Response;
   try {
-    response = await fetch("/api/state", { cache: "no-store" });
+    response = await apiFetch("/api/state");
+    if (response.status >= 500) throw new Error("Server unavailable");
   } catch {
     const cached = await offlineDb.meta.get("last-state");
-    if (!cached)
+    if (
+      !cached ||
+      !cached.value.access ||
+      (activeWorkspace() && activeWorkspace() !== cached.value.workspace.id)
+    )
       throw new Error(
         "Connect once and sign in to prepare this device for offline learning.",
       );
@@ -38,17 +45,27 @@ export async function loadState(): Promise<AppState> {
     };
   }
   if (response.status === 401) throw new Error("AUTH_REQUIRED");
+  if (response.status === 403)
+    throw new Error(
+      "ACCESS_REVOKED: Your centre access was removed. Switch to your own workspace or clear this device.",
+    );
   if (!response.ok)
     throw new Error(
       "The server is unavailable. Your saved work is safe. Please retry.",
     );
   const state = (await response.json()) as AppState;
+  const last = await offlineDb.meta.get("last-state");
+  if (last && last.value.user.userId !== state.user.userId)
+    await clearOfflineData();
   const ws = state.workspace.id;
   const pending = await offlineDb.outbox
     .where("workspace")
     .equals(ws)
     .toArray();
-  const pendingIds = new Set(pending.map((e) => e.record.id));
+  for (const event of pending)
+    if (!canWriteRecord(state.access, event.record))
+      await offlineDb.outbox.delete(event.id);
+  const pendingIds = new Set(pending.filter((e) => canWriteRecord(state.access, e.record)).map((e) => e.record.id));
   await offlineDb.transaction(
     "rw",
     offlineDb.entries,
@@ -60,7 +77,10 @@ export async function loadState(): Promise<AppState> {
         .equals(ws)
         .toArray();
       for (const record of previous)
-        if (!canonicalIds.has(record.id) && !pendingIds.has(record.id))
+        if (
+          !canReadRecord(state.access, record) ||
+          (!canonicalIds.has(record.id) && !pendingIds.has(record.id))
+        )
           await offlineDb.entries.delete(record.key);
       for (const record of state.records) {
         if (!pendingIds.has(record.id))
@@ -77,7 +97,12 @@ export async function loadState(): Promise<AppState> {
     },
   );
   const local = await offlineDb.entries.where("workspace").equals(ws).toArray();
-  return { ...state, records: local.map(({ key, workspace, ...r }) => r) };
+  return {
+    ...state,
+    records: local
+      .filter((r) => canReadRecord(state.access, r))
+      .map(({ key, workspace, ...r }) => r),
+  };
 }
 
 export async function saveRecord(workspace: string, record: AppRecord) {
@@ -122,9 +147,12 @@ async function performSync(workspace: string) {
   for (const e of events)
     await offlineDb.outbox.update(e.id, { inflight: true } as any);
   try {
-    const response = await fetch("/api/sync", {
+    const response = await apiFetch("/api/sync", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-disha-workspace": workspace,
+      },
       body: JSON.stringify({
         events: events.map(({ workspace, ...event }) => event),
       }),

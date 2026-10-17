@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeHttps } from "./access";
 const id = z
   .string()
   .min(1)
@@ -66,8 +67,17 @@ export function validateRecord(kind: string, data: any) {
       data.bio.length < 4000 &&
       Array.isArray(data.languages) &&
       data.languages.length <= 10 &&
+      data.languages.every(
+        (v: unknown) => typeof v === "string" && v.length <= 80,
+      ) &&
       Array.isArray(data.expertise) &&
-      data.expertise.length <= 20
+      data.expertise.length <= 20 &&
+      data.expertise.every(
+        (v: unknown) => typeof v === "string" && v.length <= 100,
+      ) &&
+      (data.availability === undefined ||
+        (typeof data.availability === "string" &&
+          data.availability.length <= 500))
     );
   if (kind === "opportunity")
     return (
@@ -79,7 +89,7 @@ export function validateRecord(kind: string, data: any) {
       typeof data.description === "string" &&
       data.description.length < 5000 &&
       typeof data.source === "string" &&
-      /^https:\/\//.test(data.source) &&
+      safeHttps(data.source) &&
       [
         "Scholarship",
         "Training",
@@ -95,6 +105,10 @@ export function validateRecord(kind: string, data: any) {
     );
   if (kind === "course")
     return (
+      id.safeParse(data.id).success &&
+      typeof data.published === "boolean" &&
+      typeof data.source === "string" &&
+      safeHttps(data.source) &&
       typeof data.title === "string" &&
       data.title.length > 0 &&
       data.title.length < 200 &&
@@ -102,11 +116,14 @@ export function validateRecord(kind: string, data: any) {
       data.lessons.length <= 30 &&
       data.lessons.every(
         (l: any) =>
+          l !== null &&
+          typeof l === "object" &&
           typeof l.title === "string" &&
           typeof l.text === "string" &&
           typeof l.question === "string" &&
           Array.isArray(l.options) &&
           l.options.length >= 2 &&
+          l.options.length <= 8 &&
           l.options.every((o: any) => typeof o === "string") &&
           Number.isInteger(l.correct) &&
           l.correct >= 0 &&
@@ -129,7 +146,9 @@ export function validateRecord(kind: string, data: any) {
       data.completed.every(
         (i: any) => Number.isInteger(i) && i >= 0 && i < 100,
       ) &&
-      typeof data.attempts === "object"
+      data.attempts !== null &&
+      typeof data.attempts === "object" &&
+      !Array.isArray(data.attempts)
     );
   if (kind === "application")
     return (

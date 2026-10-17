@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Disha API",
-    "version": "1.0.0",
-    "description": "Learning-to-livelihood catalogue, private workspaces and offline synchronization. Private routes use the platform's signed-in session; arbitrary identity headers from visitors are not accepted by the platform."
+    "version": "1.1.0",
+    "description": "Disha catalogue, role-scoped centres, offline sync, mentoring, partner intake and payment reconciliation. Hosted identity is platform-managed. x-disha-workspace selects only an authorized centre; it never grants access."
   },
   "paths": {
     "/api/catalog": {
@@ -18,30 +18,51 @@
     },
     "/api/state": {
       "get": {
-        "summary": "Read the signed-in owner's workspace",
-        "security": [{ "session": [] }],
+        "summary": "Read role-filtered records, workspace memberships, entitlements and integration readiness",
+        "security": [
+          {
+            "session": []
+          }
+        ],
         "responses": {
-          "200": { "description": "Workspace and versioned records" },
-          "401": { "description": "Sign-in required" }
-        }
+          "200": {
+            "description": "Workspace and versioned records"
+          },
+          "401": {
+            "description": "Sign-in required"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ]
       }
     },
     "/api/sync": {
       "post": {
         "summary": "Apply at most 50 idempotent, revision-checked record snapshots",
-        "security": [{ "session": [] }],
+        "security": [
+          {
+            "session": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["events"],
+                "required": [
+                  "events"
+                ],
                 "properties": {
                   "events": {
                     "type": "array",
                     "maxItems": 50,
-                    "items": { "$ref": "#/components/schemas/Event" }
+                    "items": {
+                      "$ref": "#/components/schemas/Event"
+                    }
                   }
                 }
               }
@@ -52,32 +73,61 @@
           "200": {
             "description": "Acknowledged event IDs, new revisions and conflict snapshots"
           },
-          "400": { "description": "Invalid event or record" },
-          "401": { "description": "Sign-in required" },
-          "403": { "description": "Cross-origin mutation rejected" },
-          "413": { "description": "Payload too large" }
-        }
+          "400": {
+            "description": "Invalid event or record"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Cross-origin mutation rejected"
+          },
+          "413": {
+            "description": "Payload too large"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ]
       }
     },
     "/api/guide": {
       "post": {
         "summary": "Ask a source-grounded question for an owned learner",
-        "security": [{ "session": [] }],
+        "security": [
+          {
+            "session": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["studentId", "message", "language"],
+                "required": [
+                  "studentId",
+                  "message",
+                  "language"
+                ],
                 "properties": {
-                  "studentId": { "type": "string" },
+                  "studentId": {
+                    "type": "string"
+                  },
                   "message": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2000
                   },
-                  "language": { "enum": ["en", "hi", "mr"] }
+                  "language": {
+                    "enum": [
+                      "en",
+                      "hi",
+                      "mr"
+                    ]
+                  }
                 }
               }
             }
@@ -87,9 +137,645 @@
           "200": {
             "description": "Answer, actual response mode and source links"
           },
-          "401": { "description": "Sign-in required" },
-          "404": { "description": "Learner absent from owner's workspace" },
-          "429": { "description": "Request limit reached" }
+          "401": {
+            "description": "Sign-in required"
+          },
+          "404": {
+            "description": "Learner absent from owner's workspace"
+          },
+          "429": {
+            "description": "Request limit reached"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ]
+      }
+    },
+    "/api/team": {
+      "get": {
+        "summary": "Owner-only membership, invitation metadata and recent audit",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create/revoke an invitation or membership; claim a code as its intended signed-in email",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "invite",
+                      "join",
+                      "revoke-member",
+                      "revoke-invite"
+                    ]
+                  },
+                  "token": {
+                    "type": "string",
+                    "description": "join: 64-character one-time code"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "role": {
+                    "enum": [
+                      "teacher",
+                      "student",
+                      "mentor",
+                      "employer"
+                    ]
+                  },
+                  "subjectId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Existing profile for student/mentor; null otherwise"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/mentoring": {
+      "get": {
+        "summary": "Read authorized sessions, onboarded mentors and optional selected-session messages",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          },
+          {
+            "name": "session",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Propose a session, change participant-authorized status or send an in-app session message",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "propose",
+                      "status",
+                      "message"
+                    ]
+                  },
+                  "studentId": {
+                    "type": "string"
+                  },
+                  "mentorId": {
+                    "type": "string"
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "minutes": {
+                    "type": "integer",
+                    "minimum": 15,
+                    "maximum": 120
+                  },
+                  "goal": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "status": {
+                    "enum": [
+                      "confirmed",
+                      "cancelled",
+                      "completed"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/submissions": {
+      "get": {
+        "summary": "Read facilitator, linked learner or receiving-employer application receipts",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit to an onboarded partner with consent; review or withdraw an existing receipt",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "submit",
+                      "review"
+                    ]
+                  },
+                  "studentId": {
+                    "type": "string"
+                  },
+                  "opportunityId": {
+                    "type": "string"
+                  },
+                  "consent": {
+                    "type": "boolean",
+                    "description": "Must be true for submission"
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "status": {
+                    "enum": [
+                      "Under review",
+                      "Accepted",
+                      "Rejected",
+                      "Withdrawn"
+                    ]
+                  },
+                  "response": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/opportunity-feed": {
+      "post": {
+        "summary": "Facilitator import or configured feed refresh; source availability is not eligibility verification",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "import",
+                      "refresh"
+                    ]
+                  },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "$ref": "#/components/schemas/ProviderListing"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/billing": {
+      "get": {
+        "summary": "Read this user's payment receipts, entitlements and provider readiness",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create hosted checkout, reconcile own receipt or cancel subscription renewal",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Workspace"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "checkout",
+                      "reconcile",
+                      "cancel-subscription"
+                    ]
+                  },
+                  "productId": {
+                    "type": "string",
+                    "description": "course_<id>, centre_month or centre_subscription"
+                  },
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful action / scoped records"
+          },
+          "400": {
+            "description": "Invalid bounded input"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "Role, participant, membership or origin restriction"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Duplicate or conflicting state"
+          },
+          "429": {
+            "description": "Durable per-user rate limit"
+          },
+          "503": {
+            "description": "Provider configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/billing/webhook": {
+      "post": {
+        "summary": "Verify exact raw-body Razorpay HMAC and reconcile the matching provider record. The site audience must permit provider delivery.",
+        "parameters": [
+          {
+            "name": "x-razorpay-signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Unmodified Razorpay payment-link/subscription event body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified event handled or ignored"
+          },
+          "400": {
+            "description": "Invalid event"
+          },
+          "401": {
+            "description": "Invalid signature"
+          },
+          "503": {
+            "description": "Webhook secret not configured"
+          }
         }
       }
     }
@@ -106,16 +792,37 @@
     "schemas": {
       "Event": {
         "type": "object",
-        "required": ["id", "baseRevision", "queuedAt", "record"],
+        "required": [
+          "id",
+          "baseRevision",
+          "queuedAt",
+          "record"
+        ],
         "properties": {
-          "id": { "type": "string", "maxLength": 120 },
-          "baseRevision": { "type": "integer", "minimum": 0 },
-          "queuedAt": { "type": "string" },
+          "id": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "baseRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "queuedAt": {
+            "type": "string"
+          },
           "record": {
             "type": "object",
-            "required": ["id", "kind", "data", "updatedAt"],
+            "required": [
+              "id",
+              "kind",
+              "data",
+              "updatedAt"
+            ],
             "properties": {
-              "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
+              "id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
               "kind": {
                 "enum": [
                   "student",
@@ -130,10 +837,90 @@
                   "opportunity"
                 ]
               },
-              "data": { "type": "object" },
-              "updatedAt": { "type": "string" }
+              "data": {
+                "type": "object"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
             }
           }
+        }
+      },
+      "ProviderListing": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "provider",
+          "type",
+          "description",
+          "source",
+          "location",
+          "verifiedAt",
+          "deadline"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "Scholarship",
+              "Training",
+              "Apprenticeship",
+              "Mentorship",
+              "Experience"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "format": "uri",
+            "description": "HTTPS provider page"
+          },
+          "location": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date"
+          },
+          "deadline": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "benefit": {
+            "type": "string"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "Workspace": {
+        "name": "x-disha-workspace",
+        "in": "header",
+        "required": false,
+        "description": "Owned centre by default; any alternative requires a current server membership.",
+        "schema": {
+          "type": "string"
         }
       }
     }
