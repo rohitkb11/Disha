@@ -1,0 +1,141 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Disha API",
+    "version": "1.0.0",
+    "description": "Learning-to-livelihood catalogue, private workspaces and offline synchronization. Private routes use the platform's signed-in session; arbitrary identity headers from visitors are not accepted by the platform."
+  },
+  "paths": {
+    "/api/catalog": {
+      "get": {
+        "summary": "Read the starter career, learning and opportunity catalogue",
+        "responses": {
+          "200": {
+            "description": "Catalogue with sources and demonstration labels"
+          }
+        }
+      }
+    },
+    "/api/state": {
+      "get": {
+        "summary": "Read the signed-in owner's workspace",
+        "security": [{ "session": [] }],
+        "responses": {
+          "200": { "description": "Workspace and versioned records" },
+          "401": { "description": "Sign-in required" }
+        }
+      }
+    },
+    "/api/sync": {
+      "post": {
+        "summary": "Apply at most 50 idempotent, revision-checked record snapshots",
+        "security": [{ "session": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["events"],
+                "properties": {
+                  "events": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": { "$ref": "#/components/schemas/Event" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Acknowledged event IDs, new revisions and conflict snapshots"
+          },
+          "400": { "description": "Invalid event or record" },
+          "401": { "description": "Sign-in required" },
+          "403": { "description": "Cross-origin mutation rejected" },
+          "413": { "description": "Payload too large" }
+        }
+      }
+    },
+    "/api/guide": {
+      "post": {
+        "summary": "Ask a source-grounded question for an owned learner",
+        "security": [{ "session": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["studentId", "message", "language"],
+                "properties": {
+                  "studentId": { "type": "string" },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "language": { "enum": ["en", "hi", "mr"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Answer, actual response mode and source links"
+          },
+          "401": { "description": "Sign-in required" },
+          "404": { "description": "Learner absent from owner's workspace" },
+          "429": { "description": "Request limit reached" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "platform-session",
+        "description": "Logical platform-managed session; exact hosted cookie name and sign-in are owned by the platform."
+      }
+    },
+    "schemas": {
+      "Event": {
+        "type": "object",
+        "required": ["id", "baseRevision", "queuedAt", "record"],
+        "properties": {
+          "id": { "type": "string", "maxLength": 120 },
+          "baseRevision": { "type": "integer", "minimum": 0 },
+          "queuedAt": { "type": "string" },
+          "record": {
+            "type": "object",
+            "required": ["id", "kind", "data", "updatedAt"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
+              "kind": {
+                "enum": [
+                  "student",
+                  "progress",
+                  "application",
+                  "note",
+                  "assignment",
+                  "mentor-request",
+                  "course",
+                  "trial",
+                  "mentor",
+                  "opportunity"
+                ]
+              },
+              "data": { "type": "object" },
+              "updatedAt": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
