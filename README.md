@@ -2,6 +2,10 @@
 
 A rural learning-to-livelihood PWA for the Citi challenge. Built with the supplied Vinext/Cloudflare starter and established open-source libraries. Kolibri is the main product reference; Disha is not a Kolibri fork. See THIRD_PARTY_NOTICES.md for actual reuse.
 
+**Submission:** [solution and five-minute demo](SUBMISSION.md) · [architecture](ARCHITECTURE.md) · [verification](VERIFICATION.md) · [API reference](public/openapi.json) · [research](docs/EXISTING_SOLUTIONS_RESEARCH.md).
+
+![Disha learning and career dashboard](docs/screenshots/dashboard.png)
+
 ## Implemented
 
 - Twelve explainable career pathways, eight original courses, sixteen lessons/assessments, career trials and a learning passport with JSON export/printing.
@@ -23,17 +27,12 @@ A rural learning-to-livelihood PWA for the Citi challenge. Built with the suppli
 Requires Node 22.13+ (Node 24 supported), npm and Git. No Cloudflare account is needed for local D1 emulation.
 
     npm ci
-    npm run build
-
-For a **new local database only**, apply migrations in order:
-
-    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_deep_zaran.sql
-    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_overconfident_spyke.sql
-    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_blue_punisher.sql
-    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_crazy_green_goblin.sql
+    npm run db:migrate
     npm run dev
 
-Do not replay applied migrations. Hosted Sites deployments apply versioned migrations. Development sign-in is loopback-only and excluded from hosted builds.
+Open `http://127.0.0.1:5173` and choose **Sign in with ChatGPT**. Local development supplies a test identity; no provider credentials or Cloudflare account are required. Two labelled sample learners are created in a new owner workspace. AI uses labelled retrieval unless a model provider is configured, and payments remain disabled until merchant credentials are configured.
+
+`db:migrate` is local-only and safe to repeat. It recognizes existing schemas created by the earlier manual instructions, preserves their application records, and records applied migrations. An unknown schema stops migration for inspection. Hosted Sites deployments continue to apply their own versioned migrations. Development sign-in is loopback-only and excluded from hosted builds.
 
 If the Windows npm shim fails, invoke the real entrypoint:
 
@@ -41,16 +40,18 @@ If the Windows npm shim fails, invoke the real entrypoint:
 
 ## Verification
 
+    npm run verify
+
+This runs TypeScript checks, unit/security tests, the production build, offline asset generation and separate-account HTTP checks against the **local compiled Worker**. It initializes an isolated database, verifies repeat migration, selects a free loopback port and stops its test server automatically. It uses no provider credentials and does not change your development database. GitHub Actions runs the same command on pushes and pull requests.
+
+Individual checks are also available:
+
     npm run typecheck
     npm test
     npm run build
+    npm run test:integration
 
-Separate-account checks target the **local compiled Worker**:
-
-    node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --port 5174 --inspector-port 0
-    npm run test:roles
-
-This creates disposable `.test` identities locally. Never target hosted Sites with simulated identity headers. `npm run test:api` checks original profile/sync workflows against the development server on port 5173. See VERIFICATION.md for release evidence.
+Integration tests create disposable `.test` identities locally. Never target hosted Sites with simulated identity headers. `npm run test:api` checks original profile/sync and local sign-in safeguards against a running development server on port 5173. See VERIFICATION.md for release evidence.
 
 ## Pilot activation
 

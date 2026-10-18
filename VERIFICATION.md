@@ -1,6 +1,18 @@
-# Verification record — 2026-10-17
+# Verification record — 2026-10-18
 
-## Current release — sprint 13
+## Submission release — sprint 14
+
+- `npm run verify` passed locally on Windows with Node 24.14.1: TypeScript, **34 unit/domain/security/provider-contract tests**, production build, **15 offline assets** and **69 compiled Worker HTTP assertions**.
+- New request tests cover exact JSON media types, malformed JSON, UTF-8 byte limits without Content-Length, split regional characters, early cancellation of oversized provider responses and bounded draining of rejected uploads. HTTP checks verify rejection followed by a working request without mutation retries.
+- The integration runner creates a separate secret-free local D1 store, applies all four migrations, repeats migration without replaying schema changes, uses a free loopback port and stops its Worker automatically. It does not use merchant/AI/feed credentials or modify the development database. GitHub CI runs the same verification command.
+- `npm run db:migrate` recognized the pre-existing four-migration development schema and preserved application records. Unknown schemas stop for inspection rather than replaying old DDL.
+- `npm run test:api` passed against the development server: anonymous/spoofed access, same-origin writes, validation, durable writes, replay idempotency and stale revision conflicts.
+- Browser verification reproduced and resolved a stale development service-worker cache that mixed React module versions. Development now unregisters Disha's old shell cache before reload and registers the offline worker only in production. The dashboard loaded, persisted sample progress appeared, and Marathi navigation switched successfully. A current dashboard screenshot is included in `docs/screenshots/dashboard.png`.
+- README now includes reproducible setup and verification; SUBMISSION.md contains the solution, demo sequence, architecture map and explicitly outstanding external validation. The research and pilot screenshot retain their 17 October provenance.
+
+## Prior release — 2026-10-17
+
+## Sprint 13
 
 - Expanded suite: **29 automated tests passed**, including actual SQLite execution of all four immutable migrations and reconciliation writes against simulated provider responses. Covers payment-time expiry, stable replay, expired passes, full/partial refunds, stale paid replies, provider outages, invalid capture references and subscription paid-period/cancellation/renewal behavior. No merchant sandbox charge is claimed.
 - **65 compiled Worker HTTP assertions passed**, adding owner-only pilot access, forbidden teacher/learner/mentor/employer access, known check IDs, required evidence, persisted blocked results and reset behavior.

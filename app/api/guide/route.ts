@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   getContext,
   ownedStudent,
-  mutationGuard,
   readJson,
   aiConfig,
   errorResponse,
@@ -14,7 +13,7 @@ import { generateGuidance } from "@/lib/ai";
 export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
-    mutationGuard(request);
+    const input = await readJson(request);
     const context = await getContext(request);
     const parsed = z
       .object({
@@ -22,7 +21,7 @@ export async function POST(request: Request) {
         message: z.string().trim().min(1).max(2000),
         language: z.enum(["en", "hi", "mr"]),
       })
-      .safeParse(await readJson(request));
+      .safeParse(input);
     if (!parsed.success) throw apiError(400, "Please send a shorter question.");
     const student = await ownedStudent(context, parsed.data.studentId);
     if (!student) throw apiError(404, "Sync your learner profile first.");

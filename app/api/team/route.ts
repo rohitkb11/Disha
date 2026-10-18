@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   getContext,
-  mutationGuard,
   readJson,
   errorResponse,
   apiError,
@@ -49,7 +48,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    mutationGuard(request);
+    const input = await readJson(request);
     const c = await getContext(request);
     await rateLimit(c, "team", 20);
     const body = z
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
           id: z.string().max(200),
         }),
       ])
-      .safeParse(await readJson(request));
+      .safeParse(input);
     if (!body.success)
       throw apiError(400, "Check the email, role and invitation code.");
     const b = body.data;

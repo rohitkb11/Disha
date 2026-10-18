@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   getContext,
-  mutationGuard,
   readJson,
   errorResponse,
   apiError,
@@ -11,11 +10,11 @@ import { eventSchema, validateRecord } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
-    mutationGuard(request);
+    const input = await readJson(request);
     const { binding, workspace, access } = await getContext(request);
     const parsed = z
       .object({ events: z.array(eventSchema).max(50) })
-      .safeParse(await readJson(request));
+      .safeParse(input);
     if (!parsed.success)
       return Response.json({ error: "Invalid sync request." }, { status: 400 });
     if (

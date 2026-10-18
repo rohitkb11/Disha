@@ -5,7 +5,7 @@ mkdirSync(".sites-runtime", { recursive: true });
 await build({
   stdin: {
     contents:
-      'export * from "./lib/domain.ts"; export * from "./lib/catalog.ts"; export * from "./lib/validation.ts"; export * from "./lib/i18n.ts"; export * from "./lib/access.ts"; export * from "./lib/crypto.ts"; export * from "./lib/ai.ts"; export * from "./lib/payment-policy.ts"; export * from "./lib/billing-reconcile.ts"; export * from "./lib/pilot.ts";',
+      'export * from "./lib/domain.ts"; export * from "./lib/catalog.ts"; export * from "./lib/validation.ts"; export * from "./lib/i18n.ts"; export * from "./lib/access.ts"; export * from "./lib/crypto.ts"; export * from "./lib/ai.ts"; export * from "./lib/payment-policy.ts"; export * from "./lib/billing-reconcile.ts"; export * from "./lib/pilot.ts"; export * from "./lib/http.ts";',
     resolveDir: process.cwd(),
   },
   outfile: ".sites-runtime/test-domain.mjs",
@@ -15,7 +15,7 @@ await build({
 });
 const result = spawnSync(
   process.execPath,
-  ["--test", "tests/domain.test.mjs", "tests/security.test.mjs", "tests/billing.test.mjs"],
+  ["--test", "tests/domain.test.mjs", "tests/security.test.mjs", "tests/billing.test.mjs", "tests/http.test.mjs"],
   { stdio: "inherit" },
 );
 process.exit(result.status ?? 1);

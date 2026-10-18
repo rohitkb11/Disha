@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   getContext,
   ownedStudent,
-  mutationGuard,
   readJson,
   errorResponse,
   apiError,
@@ -78,7 +77,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    mutationGuard(request);
+    const input = await readJson(request);
     const c = await getContext(request);
     await rateLimit(c, "mentoring", 30);
     const parsed = z
@@ -102,7 +101,7 @@ export async function POST(request: Request) {
           text: z.string().trim().min(1).max(2000),
         }),
       ])
-      .safeParse(await readJson(request));
+      .safeParse(input);
     if (!parsed.success)
       throw apiError(400, "Check the session time and details.");
     const b = parsed.data;

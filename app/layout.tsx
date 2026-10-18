@@ -20,7 +20,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {import.meta.env.DEV && (
+          <script dangerouslySetInnerHTML={{ __html: `
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller?.scriptURL.endsWith('/sw.js')) {
+              Promise.all([
+                navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.filter(r => r.active?.scriptURL.endsWith('/sw.js')).map(r => r.unregister()))),
+                caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('disha-shell-')).map(k => caches.delete(k))))
+              ]).then(() => location.reload());
+            }
+          ` }} />
+        )}
+        {children}
+      </body>
     </html>
   );
 }

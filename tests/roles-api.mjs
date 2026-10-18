@@ -48,6 +48,29 @@ async function call(role, path, body, expected = 200, workspace = ws) {
 }
 const initial = await call("owner", "/api/state");
 ws = initial.workspace.id;
+for (const [contentType, body, expected] of [
+  ["application/jsonp", "{}", 415],
+  ["application/json", JSON.stringify({ text: "द".repeat(180000) }), 413],
+  ["application/json", "{", 400],
+]) {
+  await new Promise((resolve) => setTimeout(resolve, 75));
+  const response = await fetch(base + "/api/opportunity-feed", {
+    method: "POST",
+    headers: {
+      "oai-authenticated-user-id": users.owner.id,
+      "oai-authenticated-user-email": users.owner.email,
+      "x-disha-workspace": ws,
+      origin: base,
+      "content-type": contentType,
+    },
+    body,
+  });
+  assert.equal(response.status, expected);
+  assert.ok((await response.json()).error);
+  checks++;
+}
+// A rejected/oversized body must not break the next keep-alive request.
+await call("owner", "/api/state");
 const learner = "learner_a",
   other = "learner_b",
   mentor = "mentor_profile";

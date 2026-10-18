@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { records, workspaces, memberships } from "@/db/schema";
 import { canAccessStudent, type Access } from "./access";
 import { digest } from "./crypto";
+export { mutationGuard, readJson } from "./http";
 
 export async function getContext(request?: Request) {
   const user = await getChatGPTUser();
@@ -140,39 +141,6 @@ export async function ownedStudent(
     )
     .get();
   return row?.data as any;
-}
-
-export function mutationGuard(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin)
-    throw new Response(
-      JSON.stringify({ error: "Cross-origin writes are not allowed." }),
-      { status: 403 },
-    );
-  if (!request.headers.get("content-type")?.includes("application/json"))
-    throw new Response(
-      JSON.stringify({ error: "JSON content type required." }),
-      { status: 415 },
-    );
-  if (Number(request.headers.get("content-length") || 0) > 524288)
-    throw new Response(JSON.stringify({ error: "Request too large." }), {
-      status: 413,
-    });
-}
-
-export async function readJson(request: Request) {
-  const body = await request.text();
-  if (body.length > 524288)
-    throw new Response(JSON.stringify({ error: "Request too large." }), {
-      status: 413,
-    });
-  try {
-    return JSON.parse(body);
-  } catch {
-    throw new Response(JSON.stringify({ error: "Invalid JSON." }), {
-      status: 400,
-    });
-  }
 }
 
 export function errorResponse(error: unknown) {

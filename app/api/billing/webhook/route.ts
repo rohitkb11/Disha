@@ -2,13 +2,13 @@ import { env } from "cloudflare:workers";
 import { validSignature } from "@/lib/crypto";
 import { reconcilePayment } from "@/lib/billing";
 import { runtimeConfig, errorResponse, apiError } from "@/lib/server";
+import { readBoundedText } from "@/lib/http";
 export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
+    const raw = await readBoundedText(request);
     const secret = runtimeConfig().RAZORPAY_WEBHOOK_SECRET;
     if (!secret) throw apiError(503, "Webhook not configured.");
-    const raw = await request.text();
-    if (raw.length > 524288) throw apiError(413, "Payload too large.");
     if (
       !(await validSignature(
         secret,

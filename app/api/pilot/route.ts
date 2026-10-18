@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   getContext,
-  mutationGuard,
   readJson,
   errorResponse,
   apiError,
@@ -57,7 +56,6 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    mutationGuard(request);
     const input = await readJson(request);
     const c = await getContext(request);
     if (c.access.role !== "owner")

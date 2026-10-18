@@ -167,7 +167,7 @@ export function useDisha() {
     window.addEventListener("offline", onOffline);
     void initialize();
     const timer = setInterval(() => void sync(true), 20000);
-    if ("serviceWorker" in navigator)
+    if (!import.meta.env.DEV && "serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     return () => {
       clearInterval(timer);

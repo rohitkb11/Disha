@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   getContext,
-  mutationGuard,
   readJson,
   errorResponse,
   apiError,
@@ -12,6 +11,7 @@ import {
 import { safeHttps, isFacilitator } from "@/lib/access";
 import { digest } from "@/lib/crypto";
 import { OPPORTUNITIES } from "@/lib/catalog";
+import { readBoundedText } from "@/lib/http";
 export const dynamic = "force-dynamic";
 const item = z.object({
   id: z.string().min(1).max(120),
@@ -42,7 +42,6 @@ const item = z.object({
 });
 export async function POST(request: Request) {
   try {
-    mutationGuard(request);
     // Consume this request's bounded body before asynchronous authorization.
     // workerd may otherwise close an unread stream on a rejected keep-alive request.
     const input = await readJson(request);
@@ -99,9 +98,7 @@ export async function POST(request: Request) {
             502,
             `Official source checks completed (${checked} reachable). The partner feed is unavailable; existing data is retained.`,
           );
-        const raw = await response.text();
-        if (raw.length > 250000)
-          throw apiError(502, "Partner feed exceeds the size limit.");
+        const raw = await readBoundedText(response, 250000, 502, "Partner feed exceeds the size limit.");
         let parsed;
         try {
           parsed = z.array(item).max(100).safeParse(JSON.parse(raw));
